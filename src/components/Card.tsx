@@ -18,6 +18,7 @@ export default function Card({
   onPosterPointerDown,
   interactive = true,
   dimmed = false,
+  selected = false,
   rotationOverrideDeg,
   starsOpacity = 1,
 }: {
@@ -29,6 +30,9 @@ export default function Card({
   interactive?: boolean;
   /** Fades non-selected cards once the detail view has settled. */
   dimmed?: boolean;
+  /** True whenever this card is the one being zoomed into/shown in detail — the 5-star size
+   *  boost is suppressed then, since the detail zoom math assumes the base 140x210 card size. */
+  selected?: boolean;
   /** Drives the selected card's tilt back to 0deg as it zooms toward the detail view. */
   rotationOverrideDeg?: number;
   /** Fades out only the star row as the selected card becomes the detail poster (the detail panel shows its own rating). The NEW badge stays. */
@@ -37,6 +41,7 @@ export default function Card({
   const [hovered, setHovered] = useState(false);
   const rotation = rotationOverrideDeg ?? rotationFor(entry.id);
   const showHoverDetails = interactive && hovered;
+  const boosted = entry.rating === 5 && !selected;
 
   return (
     <div
@@ -47,7 +52,12 @@ export default function Card({
     >
       <div
         className={`${styles.tilt} ${onClick || onPosterPointerDown ? "" : styles.noHover}`}
-        style={{ "--rotation": `${rotation}deg` } as React.CSSProperties}
+        style={
+          {
+            "--rotation": `${rotation}deg`,
+            "--card-scale": boosted ? 1.15 : 1,
+          } as React.CSSProperties
+        }
       >
         <div
           className={styles.poster}

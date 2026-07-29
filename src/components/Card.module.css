@@ -20,19 +20,19 @@
 
 .poster {
   position: relative;
-  width: 140px;
-  height: 210px;
+  width: calc(140px * var(--card-scale, 1));
+  height: calc(210px * var(--card-scale, 1));
   border: 0.5px solid rgba(117, 117, 117, 0.25);
   border-radius: 2px 2px 0 0;
   background-size: cover;
   background-position: center;
   cursor: pointer;
-  transition: transform 180ms ease, box-shadow 180ms ease;
+  transition: transform 180ms ease, box-shadow 180ms ease, width 220ms ease, height 220ms ease;
 }
 
 .badge {
   position: absolute;
-  left: 117px;
+  left: calc(140px * var(--card-scale, 1) - 23px);
   top: -14px;
   background: #fff;
   color: #000;
@@ -71,8 +71,8 @@
 
 .hoverDetails {
   position: absolute;
-  left: 152px;
-  top: 75px;
+  left: calc(140px * var(--card-scale, 1) + 12px);
+  top: calc(75px * var(--card-scale, 1));
   width: 168px;
   padding: 4px;
   /* Figma specs rgba(155,155,155,0.25), but over real poster art that

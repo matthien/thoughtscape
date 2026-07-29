@@ -470,6 +470,7 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
               onClick={onClick}
               interactive={phase === "idle"}
               dimmed={phase === "details" && !isSelected}
+              selected={isSelected}
               rotationOverrideDeg={
                 isSelected && phase !== "idle" ? lerp(rotationFor(entry.id), 0, t) : undefined
               }
