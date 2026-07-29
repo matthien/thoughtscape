@@ -42,23 +42,32 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
   const [t, setT] = useState(0);
   const [animTransform, setAnimTransform] = useState<Transform>({ x: 0, y: 0, scale: 1 });
   const [viewport, setViewport] = useState({ w: 0, h: 0 });
+  // The "centered" pan target reset-view glides to. State (not a ref) since
+  // it's read during render to decide whether to show the reset button.
+  const [homePan, setHomePan] = useState({ x: 0, y: 0 });
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const dragOrigin = useRef({ x: 0, y: 0 });
   const panOrigin = useRef({ x: 0, y: 0 });
-  const homePan = useRef({ x: 0, y: 0 });
   // The canvas camera (pan + wheel zoom) as it was when a detail view
   // opened, so closing restores it exactly.
   const fromCameraRef = useRef<Transform>({ x: 0, y: 0, scale: 1 });
   const cancelAnimRef = useRef<(() => void) | null>(null);
 
-  // Latest values for the non-React wheel listener.
+  // Latest values for the non-React wheel listener. Written in an effect
+  // (not during render) so refs stay an escape hatch, not a render input.
   const liveRef = useRef({ pan: { x: 0, y: 0 }, zoom: 1, phase: "idle" as Phase });
-  liveRef.current = { pan, zoom, phase };
+  useEffect(() => {
+    liveRef.current = { pan, zoom, phase };
+  });
 
   useLayoutEffect(() => {
     const home = centerPan();
-    homePan.current = home;
+    // centerPan() reads window size, so it can only run post-mount; that
+    // makes this setState-in-an-effect unavoidable (same pattern as
+    // AdminCanvas's centerPan() call).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHomePan(home);
     fromCameraRef.current = { ...home, scale: 1 };
     setPan(home);
     setViewport({ w: window.innerWidth, h: window.innerHeight });
@@ -75,7 +84,7 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
       const dx = (next.w - prev.w) / 2;
       const dy = (next.h - prev.h) / 2;
       prev = next;
-      homePan.current = centerPan();
+      setHomePan(centerPan());
       fromCameraRef.current = {
         x: fromCameraRef.current.x + dx,
         y: fromCameraRef.current.y + dy,
@@ -301,7 +310,7 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
   // detail zoom, rather than snapping.
   function resetView() {
     const from = { x: pan.x, y: pan.y, scale: zoom };
-    const to = { ...homePan.current, scale: 1 };
+    const to = { ...homePan, scale: 1 };
     zoomTargetRef.current = null;
     if (prefersReducedMotion()) {
       setPan({ x: to.x, y: to.y });
@@ -406,8 +415,8 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
   // Reset-view control only appears once you've wandered at least half a
   // screen from the default centered view, or zoomed meaningfully away
   // from 1:1.
-  const dx = pan.x - homePan.current.x;
-  const dy = pan.y - homePan.current.y;
+  const dx = pan.x - homePan.x;
+  const dy = pan.y - homePan.y;
   const distance = Math.sqrt(dx * dx + dy * dy);
   const threshold = Math.min(vw, vh) / 2;
   const showReset =
