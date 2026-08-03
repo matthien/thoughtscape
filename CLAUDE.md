@@ -16,12 +16,12 @@ Live design reference: Figma file "Untitled" (key 2xk7Ohv28hGKhGmmBXUEp6). Pages
 
 ## V1 scope (build this, nothing more)
 
-One mat. The 25 most recent movie reviews. No books, no songs, no multiple mats, no peel transition. Desktop only; mobile can show a simple fallback message or a basic list, lowest possible effort.
+One mat. The 40 most recent movie reviews. No books, no songs, no multiple mats, no peel transition. Desktop only; mobile can show a simple fallback message or a basic list, lowest possible effort.
 
 ### Core experience (public)
 
 1. Full-viewport cutting mat: charcoal background, grid, site title "matt's thoughtscape" with subtitle "entryway to my opinions about different forms of media" near center. No corner label stamp in v1 (see Figma notes above — that's a V2-only element).
-2. Up to 25 poster cards at stored x/y positions. Cards are poster art only (no title text; the poster carries it), 2:3 aspect ratio, 140x210px, thin subtle border (not cream — see Figma notes), soft shadow on hover. Star rating sits below the card in chartreuse (#E0EA5E). 5-star entries render 15% larger (see Figma notes above) to stand out on the mat.
+2. Up to 40 poster cards at stored x/y positions. Cards are poster art only (no title text; the poster carries it), 2:3 aspect ratio, 140x210px, thin subtle border (not cream — see Figma notes), soft shadow on hover. Star rating sits below the card in chartreuse (#E0EA5E). 5-star entries render 15% larger (see Figma notes above) to stand out on the mat.
 3. Pan the canvas by dragging. Releasing a drag mid-motion glides to a stop (ease-out tail of the same curve family, distance from release velocity, capped at 900px; a pause before release means no glide). Scroll-wheel zoom (built): cursor-anchored, clamped 0.4x–2.5x, each wheel tick retargets a short 250ms eased glide (same curve as the detail zoom) instead of stepping. Opening a detail from a zoomed camera and closing it restores the exact zoomed view; reset-view glides pan and zoom home together and also appears when zoom drifts >0.15 from 1:1. Admin canvas intentionally has no zoom (its drag math assumes 1:1).
 4. Hover a card: a small details popover appears beside it (title, "Directed by [director]" if available). Committed animation, not cursor-tracking: once triggered it plays fully and stays until dismissed.
 5. Click a card: details view. Large poster left; title, director, stars, and review text right; a visible "back to canvas" control plus Escape both close it. **Click-outside does NOT close it** — Matt found that annoying and explicitly asked for it to be removed; only Escape and the button do. Prev/next arrows step between reviews. Exact layout in Figma notes above.
@@ -46,8 +46,8 @@ A route not linked anywhere, gated by a simple password check (an environment va
 - Source: Letterboxd RSS at `https://letterboxd.com/matttheinn/rss/`. Parser lives in `src/lib/letterboxd.ts`; the admin-gated route `src/app/api/sync/route.ts` does the upsert. Verified against the real feed: 50 items imported, second run = 0 new / 50 updated (idempotent).
 - Fetch server-side (CORS blocks browser fetches of this feed). Feed facts, verified: guids look like `letterboxd-review-<id>`; film reviews carry `letterboxd:filmTitle/filmYear/memberRating/watchedDate`; the description CDATA holds a 600x900 poster `<img>` (plenty for the 320px detail poster) followed by review paragraphs. Watch-only entries have an auto-generated "Watched on <date>." paragraph — the parser strips it rather than storing it as a review. Items without `filmTitle` (list activity) are skipped. **Director is not in the RSS at all** — sync backfills it by fetching each film's Letterboxd page and reading the schema.org JSON-LD it embeds (`fetchDirector` in `src/lib/letterboxd.ts`, concurrency 5, only for rows where director is still null, so after the first full pass only new films cost a fetch). Gotcha: rewatch review URLs carry a numbered suffix (`/film/her/1/`) that must be stripped to reach the film page. TMDB (`tmdb:movieId` is in the feed) remains the upgrade path if scraping ever breaks.
 - Upsert keyed on (source, source_id) so re-running sync never duplicates. Confirmed with Matt: sync updates existing rows (edited reviews propagate), not insert-only. Updates never touch x/y (hand placement survives); only brand-new rows get a jittered position (x 200–1200, y 150–700).
-- `logged_at` = `letterboxd:watchedDate` (fallback pubDate), so the canvas's "latest 25" follows watch order, not posting order.
-- Canvas queries the latest 25 by logged_at. The database keeps everything; older entries simply stop rendering ("rotate off").
+- `logged_at` = `letterboxd:watchedDate` (fallback pubDate), so the canvas's "latest 40" follows watch order, not posting order.
+- Canvas queries the latest 40 by logged_at. The database keeps everything; older entries simply stop rendering ("rotate off").
 - The dummy seed rows were deleted once the real sync was verified. `supabase/seed.sql` remains only as a reference for spinning up a fresh dev database.
 
 ### Database (Supabase, Postgres)

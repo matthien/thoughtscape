@@ -1,7 +1,7 @@
 import { supabaseBrowser } from "./client";
 import type { MediaEntry } from "@/lib/types";
 
-export async function getRecentEntries(limit = 25): Promise<MediaEntry[]> {
+export async function getRecentEntries(limit = 40): Promise<MediaEntry[]> {
   const { data, error } = await supabaseBrowser
     .from("media_entries")
     .select("*")

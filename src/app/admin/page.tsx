@@ -38,7 +38,7 @@ export default async function AdminPage({
     .from("media_entries")
     .select("*")
     .order("logged_at", { ascending: false })
-    .limit(25);
+    .limit(40);
   if (error) throw error;
 
   return <AdminCanvas initialEntries={(data ?? []) as MediaEntry[]} />;
