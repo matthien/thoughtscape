@@ -150,7 +150,11 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
           setPan({ x: target.x, y: target.y });
           setZoom(target.scale);
           zoomTargetRef.current = null;
-        }
+        },
+        // Each tick continues motion already underway (like a flick release),
+        // so ease-out (no slow ramp-up) tracks continuous scrolling instead
+        // of feeling perpetually a beat behind.
+        easeOutCubic
       );
     }
     el.addEventListener("wheel", onWheel, { passive: false });

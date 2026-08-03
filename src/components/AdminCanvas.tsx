@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { MediaEntry } from "@/lib/types";
-import { animateValue, lerp } from "@/lib/detailLayout";
+import { animateValue, easeOutCubic, lerp } from "@/lib/detailLayout";
 import { TITLE_POS, GRID_TILE_URL, centerPan } from "@/lib/mat";
 import Card from "./Card";
 import styles from "./AdminCanvas.module.css";
@@ -91,7 +91,10 @@ export default function AdminCanvas({
           setPan({ x: target.x, y: target.y });
           setZoom(target.scale);
           zoomTargetRef.current = null;
-        }
+        },
+        // Each tick continues motion already underway, so ease-out (no slow
+        // ramp-up) tracks continuous scrolling instead of feeling delayed.
+        easeOutCubic
       );
     }
     el.addEventListener("wheel", onWheel, { passive: false });
