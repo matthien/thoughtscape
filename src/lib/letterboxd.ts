@@ -73,7 +73,10 @@ export async function fetchLetterboxdEntries(): Promise<ParsedEntry[]> {
   if (!res.ok) throw new Error(`Letterboxd feed returned ${res.status}`);
   const xml = await res.text();
 
-  const parser = new XMLParser({ ignoreAttributes: false });
+  // htmlEntities: Letterboxd encodes apostrophes etc. as numeric entities
+  // (&#039;) in plain fields; without this the parser only decodes the
+  // handful of named XML entities and leaves &#039; in stored text verbatim.
+  const parser = new XMLParser({ ignoreAttributes: false, htmlEntities: true });
   const parsed = parser.parse(xml);
   let items = parsed?.rss?.channel?.item ?? [];
   if (!Array.isArray(items)) items = [items];
