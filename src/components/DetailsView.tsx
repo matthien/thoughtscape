@@ -74,7 +74,7 @@ export default function DetailsView({
           {!isEmptyBook && <StarRating rating={entry.rating ?? 0} />}
         </div>
 
-        {isEmptyBook && <StarRating rating={entry.rating ?? 0} size={24} />}
+        {isEmptyBook && <StarRating rating={entry.rating ?? 0} size={32} />}
 
         {entry.review_text && <div className={styles.review}>{entry.review_text}</div>}
       </div>
