@@ -6,6 +6,7 @@ export interface MediaEntry {
   title: string;
   year: number | null;
   director: string | null;
+  author: string | null;
   cover_url: string | null;
   rating: number | null;
   review_text: string | null;

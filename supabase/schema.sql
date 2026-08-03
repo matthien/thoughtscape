@@ -5,7 +5,8 @@ create table media_entries (
   media_type text not null,          -- 'movie' for now
   title text not null,
   year int,
-  director text,
+  director text,                     -- movies only
+  author text,                       -- books only
   cover_url text,
   rating numeric,                    -- normalized 0-5
   review_text text,

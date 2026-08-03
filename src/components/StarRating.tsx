@@ -10,14 +10,27 @@ const EMPTY = "rgba(255,255,255,0.15)";
 
 // Letterboxd ratings come in half-star steps; a half star is the filled
 // glyph clipped to its left half, drawn over the dim placeholder.
-export default function StarRating({ rating }: { rating: number }) {
+export default function StarRating({
+  rating,
+  size = 20,
+}: {
+  rating: number;
+  /** Row height in px; width scales with it so stars never distort. Default 20 matches the canvas/hover-popover size. */
+  size?: number;
+}) {
   // useId's raw value contains characters that are invalid inside SVG
   // url(#...) references, so strip it down to safe ones.
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const value = Math.round(rating * 2) / 2;
 
   return (
-    <svg width={84} height={20} viewBox="0 0 84 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg
+      width={84 * (size / 20)}
+      height={size}
+      viewBox="0 0 84 20"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
       <defs>
         {/* clip-path on a transformed element resolves in that element's
             local coordinates, so this rect is in glyph space: the star is

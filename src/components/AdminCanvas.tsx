@@ -206,13 +206,21 @@ export default function AdminCanvas({
       const res = await fetch("/api/sync", { method: "POST" });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? "sync failed");
-      setSyncResult(
-        `${body.inserted} new · ${body.updated} updated` +
-          (body.directors ? ` · ${body.directors} directors added` : "")
-      );
+
+      // New counts split by type (movies vs. books); updated is combined
+      // since which fields changed isn't as interesting as what's new.
+      const parts = [];
+      if (body.movies.inserted > 0) parts.push(`${body.movies.inserted} movies new`);
+      if (body.books.inserted > 0) parts.push(`${body.books.inserted} books new`);
+      const totalUpdated = body.movies.updated + body.books.updated;
+      if (totalUpdated > 0) parts.push(`${totalUpdated} updated`);
+      if (body.directors > 0) parts.push(`${body.directors} directors added`);
+      setSyncResult(parts.length ? parts.join(" · ") : "no changes");
+
       // New/updated entries come from the server payload, so the simplest
       // correct refresh is a reload.
-      if (body.inserted > 0 || body.updated > 0) {
+      const totalInserted = body.movies.inserted + body.books.inserted;
+      if (totalInserted > 0 || totalUpdated > 0) {
         setTimeout(() => window.location.reload(), 900);
       }
     } catch (e) {

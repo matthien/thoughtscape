@@ -44,6 +44,12 @@ export default function DetailsView({
   );
   const slide = (1 - opacity) * 12;
 
+  // Books with no review get their own layout: no placeholder copy for the
+  // missing review, just the rating rendered larger and moved below the
+  // author line instead of squeezed into the title row (Figma:
+  // book-details/finished-tag/empty-review).
+  const isEmptyBook = entry.media_type === "book" && !entry.review_text;
+
   return (
     <>
       <div
@@ -59,12 +65,16 @@ export default function DetailsView({
         <div className={styles.heading}>
           <div className={styles.titleBlock}>
             <div className={styles.title}>{entry.title}</div>
-            {entry.director && (
+            {entry.director ? (
               <div className={styles.director}>Directed by {entry.director}</div>
+            ) : (
+              entry.author && <div className={styles.director}>Written by {entry.author}</div>
             )}
           </div>
-          <StarRating rating={entry.rating ?? 0} />
+          {!isEmptyBook && <StarRating rating={entry.rating ?? 0} />}
         </div>
+
+        {isEmptyBook && <StarRating rating={entry.rating ?? 0} size={24} />}
 
         {entry.review_text && <div className={styles.review}>{entry.review_text}</div>}
       </div>

@@ -78,8 +78,10 @@ export default function Card({
 
       <div className={`${styles.hoverDetails} ${showHoverDetails ? styles.visible : ""}`}>
         <div className={styles.hoverTitle}>{entry.title}</div>
-        {entry.director && (
+        {entry.director ? (
           <div className={styles.hoverDirector}>Directed by {entry.director}</div>
+        ) : (
+          entry.author && <div className={styles.hoverDirector}>Written by {entry.author}</div>
         )}
       </div>
     </div>
