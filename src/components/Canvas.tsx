@@ -115,9 +115,13 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
         ...liveRef.current.pan,
         scale: liveRef.current.zoom,
       };
+      // Trackpad pinch gestures arrive as wheel events with ctrlKey set, but
+      // their deltaY is on a much smaller scale than a regular scroll's —
+      // boost sensitivity for that case (same fix d3-zoom uses).
+      const sensitivity = e.ctrlKey ? 0.015 : 0.0015;
       const nextZoom = Math.min(
         MAX_ZOOM,
-        Math.max(MIN_ZOOM, base.scale * Math.exp(-e.deltaY * 0.0015))
+        Math.max(MIN_ZOOM, base.scale * Math.exp(-e.deltaY * sensitivity))
       );
       if (nextZoom === base.scale) return;
       // Keep the world point under the cursor fixed:
