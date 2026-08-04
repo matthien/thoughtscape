@@ -9,6 +9,7 @@ import styles from "./DetailsView.module.css";
 
 export default function DetailsView({
   entry,
+  posterH,
   opacity,
   viewportW,
   viewportH,
@@ -19,6 +20,10 @@ export default function DetailsView({
   hasRight,
 }: {
   entry: MediaEntry;
+  /** On-screen poster height for this entry — fixed for movies (2:3), but
+   *  variable for books, so the text column/nav row line up with the real
+   *  poster bottom instead of an assumed 480px. See posterHeightFor. */
+  posterH: number;
   /** 0 (hidden, mid-zoom) to 1 (fully settled) — text fades/slides in near the end of the camera move. */
   opacity: number;
   viewportW: number;
@@ -40,7 +45,8 @@ export default function DetailsView({
 
   const { textLeft, textTop, textWidth, navTop, navRight } = getDetailLayout(
     viewportW,
-    viewportH
+    viewportH,
+    posterH
   );
   const slide = (1 - opacity) * 12;
 

@@ -9,6 +9,8 @@ import {
   lerp,
   rotationFor,
   slugify,
+  detailPath,
+  posterHeightFor,
 } from "@/lib/detailLayout";
 import { TITLE_POS, GRID_TILE_URL, centerPan } from "@/lib/mat";
 import Card from "./Card";
@@ -45,6 +47,12 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
   // The "centered" pan target reset-view glides to. State (not a ref) since
   // it's read during render to decide whether to show the reset button.
   const [homePan, setHomePan] = useState({ x: 0, y: 0 });
+  // Book covers aren't a uniform 2:3 like movie posters, so the detail-zoom
+  // camera math can't assume a fixed card height for them. Each book reports
+  // its real rendered height here once its cover image loads (see
+  // Card's onBookHeightKnown); computeZoomTransform falls back to the movie
+  // height for the brief window before that.
+  const [bookHeights, setBookHeights] = useState<Record<string, number>>({});
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const dragOrigin = useRef({ x: 0, y: 0 });
@@ -165,14 +173,18 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
 
-  // Deep-linking: /film/<slug> opens straight into the detail view (no
-  // camera to animate from on a fresh load), and the browser's back/
-  // forward buttons are kept in sync via popstate. The canvas itself is
-  // never unmounted for any of this -- it's all just state.
+  // Deep-linking: /film/<slug> (movies) or /book/<slug> (books) opens
+  // straight into the detail view (no camera to animate from on a fresh
+  // load), and the browser's back/forward buttons are kept in sync via
+  // popstate. The canvas itself is never unmounted for any of this -- it's
+  // all just state.
   useEffect(() => {
     function applyFromPath() {
-      const match = window.location.pathname.match(/^\/film\/(.+)$/);
-      const idx = match ? entries.findIndex((e) => slugify(e.title) === match[1]) : -1;
+      const match = window.location.pathname.match(/^\/(film|book)\/(.+)$/);
+      const mediaType = match?.[1] === "book" ? "book" : "movie";
+      const idx = match
+        ? entries.findIndex((e) => e.media_type === mediaType && slugify(e.title) === match[2])
+        : -1;
       cancelAnimRef.current?.();
       if (idx !== -1) {
         setSelectedIndex(idx);
@@ -230,10 +242,10 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
     zoomTargetRef.current = null;
     fromCameraRef.current = { x: pan.x, y: pan.y, scale: zoom };
     setSelectedIndex(i);
-    window.history.pushState({ selectedIndex: i }, "", `/film/${slugify(entry.title)}`);
+    window.history.pushState({ selectedIndex: i }, "", detailPath(entry));
 
     const from: Transform = { x: pan.x, y: pan.y, scale: zoom };
-    const to = computeZoomTransform(entry.x, entry.y, vw, vh);
+    const to = computeZoomTransform(entry.x, entry.y, vw, vh, posterHeightFor(entry, bookHeights[entry.id]));
 
     if (prefersReducedMotion()) {
       setAnimTransform(to);
@@ -251,7 +263,7 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
     const entry = entries[selectedIndex];
     window.history.pushState(null, "", "/");
 
-    const from = computeZoomTransform(entry.x, entry.y, vw, vh);
+    const from = computeZoomTransform(entry.x, entry.y, vw, vh, posterHeightFor(entry, bookHeights[entry.id]));
     const to: Transform = { ...fromCameraRef.current };
 
     function settle() {
@@ -276,14 +288,22 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
     const vh = window.innerHeight;
     const fromEntry = entries[selectedIndex];
     const toEntry = entries[newIndex];
-    window.history.replaceState(
-      { selectedIndex: newIndex },
-      "",
-      `/film/${slugify(toEntry.title)}`
-    );
+    window.history.replaceState({ selectedIndex: newIndex }, "", detailPath(toEntry));
 
-    const from = computeZoomTransform(fromEntry.x, fromEntry.y, vw, vh);
-    const to = computeZoomTransform(toEntry.x, toEntry.y, vw, vh);
+    const from = computeZoomTransform(
+      fromEntry.x,
+      fromEntry.y,
+      vw,
+      vh,
+      posterHeightFor(fromEntry, bookHeights[fromEntry.id])
+    );
+    const to = computeZoomTransform(
+      toEntry.x,
+      toEntry.y,
+      vw,
+      vh,
+      posterHeightFor(toEntry, bookHeights[toEntry.id])
+    );
     setSelectedIndex(newIndex);
 
     if (prefersReducedMotion()) {
@@ -417,7 +437,7 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
     camera = animTransform;
   } else {
     const entry = entries[selectedIndex!];
-    camera = computeZoomTransform(entry.x, entry.y, vw, vh);
+    camera = computeZoomTransform(entry.x, entry.y, vw, vh, posterHeightFor(entry, bookHeights[entry.id]));
   }
 
   // Reset-view control only appears once you've wandered at least half a
@@ -492,6 +512,9 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
                 isSelected && phase !== "idle" ? lerp(rotationFor(entry.id), 0, t) : undefined
               }
               starsOpacity={isSelected && phase !== "idle" ? 1 - t : 1}
+              onBookHeightKnown={(height) =>
+                setBookHeights((prev) => (prev[entry.id] === height ? prev : { ...prev, [entry.id]: height }))
+              }
             />
           );
         })}
@@ -510,9 +533,11 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
         (() => {
           const leftTarget = nearestIndex(-1);
           const rightTarget = nearestIndex(1);
+          const selectedEntry = entries[selectedIndex];
           return (
             <DetailsView
-              entry={entries[selectedIndex]}
+              entry={selectedEntry}
+              posterH={posterHeightFor(selectedEntry, bookHeights[selectedEntry.id])}
               opacity={textOpacity}
               viewportW={vw}
               viewportH={vh}

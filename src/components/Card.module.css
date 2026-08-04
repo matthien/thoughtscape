@@ -69,6 +69,102 @@
   transform: none;
 }
 
+.bookWrap {
+  position: relative;
+  width: 140px;
+  transition: transform 180ms ease;
+}
+
+/* Flat backing page behind the cover — fills the clipped corner (and the
+   sliver the curved flap doesn't cover) so the mat never shows through the
+   cut. Slightly darker than the flap's own brightest tip so the flap still
+   reads as the top-most, most-lit surface. */
+.pageLayer {
+  position: absolute;
+  inset: 0;
+  background: #ddd6c4;
+  pointer-events: none;
+}
+
+/* Missing/failed cover: no image at all, just a sized transparent box so
+   bookWrap has a height and the page layer shows through as a blank page.
+   Still gets the card's ambient shadow so it doesn't look unstyled. */
+.bookCoverFallback {
+  width: 100%;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.5)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+}
+
+.bookCover {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* No border — deliberate, per Matt. */
+  /* clip-path clips box-shadow to nothing, so the card's resting shadow has
+     to be a filter instead — it composites against the clipped silhouette. */
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.5)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+  transition: filter 180ms ease;
+}
+
+.curl {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* Tight, dark, blurred — sits mostly under the flap fill (painted after it)
+   but haloes out onto the page layer beside it, reading as contact shadow
+   in the crook where the lifted corner meets the page underneath. */
+.foldShadow {
+  fill: none;
+  stroke: rgba(0, 0, 0, 0.6);
+  stroke-width: 2.5;
+  filter: blur(1.2px);
+}
+
+.curlFill {
+  filter: drop-shadow(-4px -4px 6px rgba(0, 0, 0, 0.45));
+}
+
+/* Thickness edge along the straight cut only — the paper's cut edge
+   catching light, not a border. A crease has zero thickness; a page has an
+   edge. */
+.curlEdge {
+  stroke: #fdf8ec;
+  stroke-width: 1.2;
+  opacity: 0.9;
+}
+
+.contactShadow {
+  position: absolute;
+  left: 1px;
+  bottom: -7px;
+  width: calc(100% - 2px);
+  height: 13px;
+  background: radial-gradient(ellipse, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.35) 45%, transparent 75%);
+  filter: blur(3px);
+  pointer-events: none;
+}
+
+.tilt:hover .bookWrap {
+  transform: translateY(-4px) scale(1.03);
+}
+
+.tilt:hover .bookCover,
+.tilt:hover .bookCoverFallback {
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.55)) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.5));
+}
+
+.tilt.noHover:hover .bookWrap {
+  transform: none;
+}
+
+.tilt.noHover:hover .bookCover,
+.tilt.noHover:hover .bookCoverFallback {
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.5)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+}
+
 .hoverDetails {
   position: absolute;
   left: calc(140px * var(--card-scale, 1) + 12px);
