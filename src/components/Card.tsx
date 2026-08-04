@@ -77,6 +77,7 @@ function BookCover({
           alt=""
           title={entry.title}
           className={styles.bookCover}
+          draggable={false}
           style={{
             clipPath: `polygon(0 0, 100% 0, 100% calc(100% - ${CURL}px), calc(100% - ${CURL}px) 100%, 0 100%)`,
           }}

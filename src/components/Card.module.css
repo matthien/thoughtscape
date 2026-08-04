@@ -73,6 +73,15 @@
   position: relative;
   width: 140px;
   transition: transform 180ms ease;
+  /* The cover is a real <img> (needed to read its natural aspect ratio),
+     and browsers make <img> natively draggable by default — without this,
+     pressing and dragging it starts the browser's own HTML5 drag (a ghost
+     copy following the cursor) instead of our pointer-based drag/pan,
+     which is what read as the interaction "freezing". The draggable={false}
+     attribute on the <img> covers Chrome/Firefox; -webkit-user-drag is
+     Safari's equivalent. */
+  -webkit-user-drag: none;
+  user-select: none;
 }
 
 /* Flat backing page behind the cover — fills the clipped corner (and the
