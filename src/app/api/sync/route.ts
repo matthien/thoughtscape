@@ -47,9 +47,17 @@ async function syncSource(source: string, mediaType: string, parsed: SyncEntry[]
     };
 
     if (existing.has(entry.source_id)) {
+      // Never let a feed that's momentarily dropped the rating wipe one we
+      // already have. Goodreads RSS in particular keeps reporting a
+      // freshly-added rating as 0 (-> null in the parser) for a while;
+      // omitting the key leaves the stored column untouched. A real rating
+      // value still overwrites normally.
+      const updatePayload: Partial<typeof common> = { ...common };
+      if (entry.rating === null) delete updatePayload.rating;
+
       const { error } = await supabaseAdmin
         .from("media_entries")
-        .update(common)
+        .update(updatePayload)
         .eq("source", source)
         .eq("source_id", entry.source_id);
       if (error) throw new Error(error.message);
