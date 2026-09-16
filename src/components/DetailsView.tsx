@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { MediaEntry } from "@/lib/types";
 import { getDetailLayout } from "@/lib/detailLayout";
 import StarRating from "./StarRating";
@@ -35,6 +35,13 @@ export default function DetailsView({
   hasLeft: boolean;
   hasRight: boolean;
 }) {
+  // Spoiler-flagged reviews start blurred and reveal on click. Keyed off the
+  // entry so arrowing from one spoiler review to another re-hides it rather
+  // than carrying the previous reveal over -- DetailsView isn't remounted
+  // between entries, only re-rendered with a new prop.
+  const [revealedId, setRevealedId] = useState<string | null>(null);
+  const spoilersHidden = entry.contains_spoilers && revealedId !== entry.id;
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") onBack();
@@ -82,7 +89,29 @@ export default function DetailsView({
 
         {isEmptyBook && <StarRating rating={entry.rating ?? 0} size={32} />}
 
-        {entry.review_text && <div className={styles.review}>{entry.review_text}</div>}
+        {entry.review_text && (
+          <div className={styles.reviewBlock}>
+            <div
+              className={`${styles.review} ${spoilersHidden ? styles.blurred : ""}`}
+              aria-hidden={spoilersHidden || undefined}
+            >
+              {entry.review_text}
+            </div>
+            {spoilersHidden && (
+              // Covers the whole blurred block so a click anywhere on it
+              // reveals; a real <button> so it's focusable and Enter/Space work.
+              <button
+                className={styles.spoilerCover}
+                onClick={() => setRevealedId(entry.id)}
+              >
+                <span className={styles.spoilerLabel}>
+                  <span className={styles.spoilerWarn}>contains spoilers</span>
+                  <span className={styles.spoilerHint}>click to reveal</span>
+                </span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div

@@ -9,9 +9,16 @@ export interface ParsedEntry {
   cover_url: string | null;
   rating: number | null;
   review_text: string | null;
+  contains_spoilers: boolean;
   logged_at: string;
   external_url: string | null;
 }
+
+// Letterboxd's own boilerplate for a spoiler-flagged review, injected as the
+// first paragraph of the description. It's chrome, not something Matt wrote,
+// so it's stripped from the stored review — the site renders its own
+// blur-to-reveal treatment off the contains_spoilers flag instead.
+const SPOILER_NOTICE = /^This review may contain spoilers\.?$/i;
 
 // Pulls the poster out of the description's first <img>, then strips all
 // markup from the remaining paragraphs to get the review text. Letterboxd
@@ -26,7 +33,8 @@ function parseDescription(html: string): { cover: string | null; review: string 
     .map((m) => m[1].replace(/<[^>]+>/g, "").trim())
     .filter((p) => p.length > 0)
     .filter((p) => !/^<img/.test(p) && !imgMatch?.[0].includes(p))
-    .filter((p) => !/^Watched on /.test(p));
+    .filter((p) => !/^Watched on /.test(p))
+    .filter((p) => !SPOILER_NOTICE.test(p));
 
   return { cover, review: paragraphs.length ? paragraphs.join("\n\n") : null };
 }
@@ -87,7 +95,13 @@ export async function fetchLetterboxdEntries(): Promise<ParsedEntry[]> {
     // The feed can also carry list activity; only film reviews have a filmTitle.
     if (!guid || !item["letterboxd:filmTitle"]) continue;
 
-    const { cover, review } = parseDescription(String(item.description ?? ""));
+    const description = String(item.description ?? "");
+    const { cover, review } = parseDescription(description);
+    // The spoiler flag surfaces in two independent places; either one is
+    // enough, so checking both survives Letterboxd changing one of them.
+    const containsSpoilers =
+      /\(contains spoilers\)\s*$/i.test(String(item.title ?? "")) ||
+      /may contain spoilers/i.test(description);
     const watched = item["letterboxd:watchedDate"];
     const loggedAt = watched
       ? new Date(`${watched}T00:00:00Z`).toISOString()
@@ -103,6 +117,7 @@ export async function fetchLetterboxdEntries(): Promise<ParsedEntry[]> {
           ? Number(item["letterboxd:memberRating"])
           : null,
       review_text: review,
+      contains_spoilers: containsSpoilers,
       logged_at: loggedAt,
       external_url: item.link ? String(item.link) : null,
     });

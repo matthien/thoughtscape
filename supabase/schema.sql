@@ -10,6 +10,7 @@ create table media_entries (
   cover_url text,
   rating numeric,                    -- normalized 0-5
   review_text text,
+  contains_spoilers boolean not null default false,  -- letterboxd spoiler flag; books always false
   logged_at timestamp not null,
   external_url text,
   x numeric,

@@ -10,6 +10,7 @@ export interface MediaEntry {
   cover_url: string | null;
   rating: number | null;
   review_text: string | null;
+  contains_spoilers: boolean;
   logged_at: string;
   external_url: string | null;
   x: number;

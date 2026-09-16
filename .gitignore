@@ -42,3 +42,6 @@ next-env.d.ts
 
 # local Claude Code permission settings
 .claude/settings.local.json
+
+# supabase CLI scratch
+supabase/.temp/

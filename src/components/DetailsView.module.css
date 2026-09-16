@@ -43,6 +43,82 @@
   max-height: 420px;
   overflow-y: auto;
   pointer-events: auto;
+  transition: filter 260ms ease, opacity 260ms ease;
+}
+
+/* Spoiler-flagged reviews sit behind a blur until clicked. overflow is
+   clamped to hidden while hidden so the text can't be scrolled (or
+   scrolled-to by a find-in-page) past the cover, and selection is off so
+   the words can't simply be dragged out of the blur. */
+.reviewBlock {
+  position: relative;
+  pointer-events: auto;
+}
+
+.blurred {
+  filter: blur(6px);
+  /* Dimmed as well as blurred: at full white the hidden text is bright and
+     busy enough to pull the eye toward the thing it's hiding, and it muddies
+     the label sitting on top of it. Half opacity reads as suppressed, and
+     fades back up as part of the reveal. */
+  opacity: 0.5;
+  overflow: hidden;
+  user-select: none;
+}
+
+.spoilerCover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* Bare text, no pill: this isn't a navigation control and shouldn't read as
+   one. The text-shadow is the only concession -- white 12px type sitting on
+   blurred white type needs some separation to stay legible. */
+.spoilerLabel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: -0.24px;
+  white-space: nowrap;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.8);
+}
+
+/* The warning carries the weight; "click to reveal" is the quieter
+   instruction that follows it. */
+.spoilerWarn {
+  font-weight: 600;
+}
+
+/* Same secondary grey as "Directed by X" and the site subtitle, so the
+   instruction half sits in the established second tier rather than
+   inventing a new one. */
+.spoilerHint {
+  color: #a5a5a5;
+}
+
+/* Hovering eases the blur back a little -- enough to acknowledge the cursor,
+   not enough to read a word of it. The cover is inset:0 over the block, so
+   hovering the block is hovering the cover; :has() handles the keyboard case
+   in its own rule, since one unsupported selector would void a shared list. */
+.reviewBlock:hover .blurred {
+  filter: blur(4px);
+}
+
+.reviewBlock:has(.spoilerCover:focus-visible) .blurred {
+  filter: blur(4px);
 }
 
 .navRow {

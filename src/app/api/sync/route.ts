@@ -16,6 +16,10 @@ type SyncEntry = {
   external_url: string | null;
   director?: string | null;
   author?: string | null;
+  /** Letterboxd-only: the review is flagged as containing spoilers. Goodreads
+   *  has no equivalent, so its adapter leaves this undefined and the column
+   *  keeps its `false` default. */
+  contains_spoilers?: boolean;
 };
 
 // Upserts one adapter's parsed entries for a given (source, media_type).
@@ -44,6 +48,9 @@ async function syncSource(source: string, mediaType: string, parsed: SyncEntry[]
       external_url: entry.external_url,
       ...(entry.director !== undefined ? { director: entry.director } : {}),
       ...(entry.author !== undefined ? { author: entry.author } : {}),
+      ...(entry.contains_spoilers !== undefined
+        ? { contains_spoilers: entry.contains_spoilers }
+        : {}),
     };
 
     if (existing.has(entry.source_id)) {
