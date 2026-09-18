@@ -1,0 +1,37 @@
+.ruler {
+  position: absolute;
+  inset: 0;
+  /* Above the world, below the reset button and detail view. */
+  z-index: 5;
+  /* Never eat a drag — the whole mat behind it stays grabbable. */
+  pointer-events: none;
+  font-family: var(--font-sans), sans-serif;
+  font-weight: 400;
+  font-size: 9px;
+  line-height: 1;
+  color: #737378;
+  /* Cards can pan right under the edges, and a mid-grey number on bright
+     poster art washes out. A mat-coloured halo is invisible against the mat
+     itself but keeps the numbers legible where art slides beneath them. */
+  text-shadow:
+    0 0 3px #19191b,
+    0 0 6px #19191b;
+  /* Match the grid's own fade when the detail view opens. */
+  transition: opacity 300ms ease;
+}
+
+.markTop {
+  position: absolute;
+  top: 8px;
+  /* `left` is the exact world position; shift the label so its own center
+     sits on that line rather than starting there. */
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.markLeft {
+  position: absolute;
+  left: 8px;
+  transform: translateY(-50%);
+  white-space: nowrap;
+}

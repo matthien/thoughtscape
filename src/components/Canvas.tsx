@@ -15,6 +15,7 @@ import {
 import { TITLE_POS, GRID_TILE_URL, centerPan } from "@/lib/mat";
 import Card from "./Card";
 import DetailsView from "./DetailsView";
+import Ruler from "./Ruler";
 import styles from "./Canvas.module.css";
 
 const OPEN_CLOSE_DURATION = 700;
@@ -462,6 +463,16 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
     >
+      {/* Outside .world on purpose: the ruler is fixed to the viewport
+          edges and reverses the camera to label world coordinates, rather
+          than riding along with the transform. */}
+      <Ruler
+        pan={{ x: camera.x, y: camera.y }}
+        scale={camera.scale}
+        viewport={{ w: vw, h: vh }}
+        dimmed={phase !== "idle"}
+      />
+
       <div
         className={styles.world}
         style={{
