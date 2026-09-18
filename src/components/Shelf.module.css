@@ -1,0 +1,241 @@
+/* The admin-only shelf: a drawer of hidden entries that pulls up from the
+   bottom of the mat, with the pill riding its top edge as the handle.
+   Everything here is position: fixed (screen space, outside the panned world)
+   and sits above the admin controls, which are all z-index 10 — so the drawer
+   simply slides over "reset view" and "back to live" as it opens and nothing
+   has to be repositioned to make room for it.
+
+   Surface values are the "combination" depth variant from Matt's Figma Make
+   exploration: a lighter-than-mat panel with a top highlight on the pill only,
+   plus a canvas vignette.
+
+   Two deliberate deviations from that exploration, both verified in the
+   browser. The surface is flat #26262a rather than rgba(38,38,42,0.97): that
+   last 3% of translucency let poster art behind the drawer ghost through as
+   recognisable shapes rather than a wash, which read as smudges in a UI this
+   dark -- the same reason the hover popover on the mat went near-opaque. And
+   with an opaque surface there is nothing left for backdrop-filter to blur, so
+   the blur/saturate is gone entirely -- it was doing no visible work at 0.97
+   alpha anyway. */
+
+/* Fades to near-black at the bottom so the drawer reads as sitting in front of
+   the mat rather than pasted onto it. Tied to how far open the drawer is —
+   always-on, it would permanently dim the bottom row of cards while arranging. */
+.vignette {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 220px;
+  z-index: 20;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.72) 100%);
+}
+
+.pillDock {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  /* The pill as a whole is a click target that toggles the shelf; only the
+     grab bar advertises dragging (see .grabber). Dragging still works from
+     anywhere on the pill — it's the cursor hint that's deliberately narrow,
+     since a resize cursor across the whole pill implied the label was a
+     drag handle. */
+  cursor: pointer;
+}
+
+.pill {
+  min-width: 280px;
+  min-height: 38px;
+  padding: 8px 20px;
+  border-radius: 5px 5px 0 0;
+  background: #26262a;
+  border-top: 1.5px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* The grab bar — the only affordance saying the pill is draggable, not just
+   clickable, so it's also the only part that shows the resize cursor. The
+   padding gives it a taller hit area than its 2px line without moving
+   anything, and the negative margin takes that padding back out of the
+   pill's layout so the pill's height is unchanged. */
+.grabber {
+  width: 32px;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.25);
+  box-sizing: content-box;
+  padding: 5px 8px;
+  margin: -5px -8px;
+  background-clip: content-box;
+  cursor: ns-resize;
+}
+
+.pillLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  letter-spacing: -0.22px;
+  color: rgba(255, 255, 255, 0.65);
+  white-space: nowrap;
+}
+
+.pillDot {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 10px;
+}
+
+.drawer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  overflow: hidden;
+  background: #26262a;
+  box-shadow: 0 -40px 100px rgba(0, 0, 0, 0.75);
+}
+
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 12px 24px 16px;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Within each row, covers rest on a common bottom line like books on a
+     shelf, so a book keeping its own aspect ratio just gives that row ragged
+     tops instead of misaligning every star row and title. align-content packs
+     the rows themselves to the top so a half-full shelf doesn't float. */
+  align-items: flex-end;
+  align-content: flex-start;
+  scrollbar-width: none;
+}
+
+.strip::-webkit-scrollbar {
+  display: none;
+}
+
+.item {
+  flex: none;
+  width: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.cover {
+  display: block;
+  /* True 2:3, matching the mat's 140x210 card exactly. 148 (the value in the
+     Figma Make exploration) is 0.676 rather than 0.667, which made object-fit
+     crop a sliver off every poster and left the hide animation morphing the
+     aspect ratio slightly as it flew. */
+  width: 100px;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 2px;
+  /* Same hairline as the card on the mat, not a second formulation of it. */
+  border: 0.5px solid rgba(117, 117, 117, 0.25);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  cursor: grab;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.cover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6);
+}
+
+/* Books keep their real aspect ratio (height follows the image at a fixed
+   100px width). The max-height is a guard so a freakishly tall cover can't
+   push the row past the drawer's peek height; contain keeps it undistorted
+   if it ever trips. */
+.coverBook {
+  height: auto;
+  max-height: 164px;
+  object-fit: contain;
+  border: none;
+}
+
+.meta {
+  width: 100px;
+}
+
+.metaTitle {
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: -0.22px;
+  color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metaNote {
+  margin-top: 2px;
+  /* Holds its line box when there's no review text, so every column is the
+     same height below its cover (see the note in Shelf.tsx). */
+  min-height: 13px;
+  font-size: 10px;
+  letter-spacing: -0.2px;
+  color: rgba(255, 255, 255, 0.3);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty {
+  padding: 16px 24px;
+  font-size: 11px;
+  letter-spacing: -0.22px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* The card flying from the mat into its slot when the X is pressed. Unlike
+   the drag ghost this is driven by explicit left/top/width/height so it can
+   shrink from mat size (140x210, times the current zoom) to shelf size
+   (100x150) over the flight. */
+.flight {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  /* Safety net, not layout: the inline width/height always override these.
+     They exist so that if a bad number ever reaches the style attribute the
+     browser drops that declaration and falls back to shelf-card size, rather
+     than painting the poster at its full intrinsic resolution. */
+  width: 100px;
+  height: 150px;
+  border-radius: 2px;
+  object-fit: cover;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7);
+}
+
+/* The slot the flying card is heading for. It's laid out and taking up space
+   (so nothing jumps when the card lands) but invisible until it arrives. */
+.slotReserved {
+  opacity: 0;
+}
+
+/* The card following the cursor on a drag-out. Deliberately a sibling of the
+   drawer rather than a child: the drawer is overflow: hidden and scrollable,
+   so a ghost inside it would be clipped the instant it moved past the edge. */
+.ghost {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  width: 100px;
+  border-radius: 2px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7);
+  transform: translate(-50%, -50%) rotate(-3deg) scale(1.06);
+}

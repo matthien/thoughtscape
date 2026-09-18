@@ -13,6 +13,49 @@ const NEW_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const BOOK_WIDTH = 140;
 const CURL = Math.round(BOOK_WIDTH * 0.22);
 
+// Rendered inside the poster/cover (not alongside it) so it inherits the same
+// hover transform. As a sibling it stayed put while the card lifted and scaled
+// out from under it, which threw off how much of the button sat past the edge.
+//
+// This hides the entry rather than deleting it: the row is never removed, it
+// just moves to the admin shelf, so the X is styled neutrally rather than as a
+// destructive control.
+function HideControl({
+  title,
+  onHide,
+}: {
+  title: string;
+  onHide: (from: DOMRect) => void;
+}) {
+  return (
+    <button
+      className={styles.hideButton}
+      // pointerdown has to be swallowed: it would otherwise reach the poster's
+      // own drag handler and the admin viewport's pan handler underneath.
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        // The button sits inside the poster/cover, so its parent is exactly
+        // the artwork the shelf animation should fly from. Measuring it here
+        // saves the canvas from reconstructing the rect out of world
+        // coordinates, zoom, the 5-star size boost and book cover heights.
+        const art = (e.currentTarget as HTMLElement).parentElement;
+        if (art) onHide(art.getBoundingClientRect());
+      }}
+      title={`Hide ${title} — moves it to the shelf`}
+    >
+      <svg width={14} height={14} viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path
+          d="M2.5 2.5L9.5 9.5M9.5 2.5L2.5 9.5"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+        />
+      </svg>
+    </button>
+  );
+}
+
 function isRecentlySynced(entry: MediaEntry): boolean {
   return Date.now() - new Date(entry.created_at).getTime() < NEW_WINDOW_MS;
 }
@@ -40,10 +83,12 @@ function BookCover({
   onClick,
   onPosterPointerDown,
   onHeightKnown,
+  onHide,
 }: {
   entry: MediaEntry;
   onClick?: () => void;
   onPosterPointerDown?: (e: React.PointerEvent) => void;
+  onHide?: (from: DOMRect) => void;
   /** Reports the cover's rendered world-space height (at the fixed 140px
    *  width) once its natural size is known — the detail-view camera math
    *  needs this since, unlike movie posters, book covers aren't a uniform
@@ -119,6 +164,7 @@ function BookCover({
         <line className={styles.curlEdge} x1="1" y1="30" x2="30" y2="1" />
       </svg>
       <div className={styles.contactShadow} />
+      {onHide && <HideControl title={entry.title} onHide={onHide} />}
     </div>
   );
 }
@@ -133,6 +179,7 @@ export default function Card({
   rotationOverrideDeg,
   starsOpacity = 1,
   onBookHeightKnown,
+  onHide,
 }: {
   entry: MediaEntry;
   onClick?: () => void;
@@ -152,6 +199,12 @@ export default function Card({
   /** Book-only: reports the cover's rendered world-space height once known, so the caller's
    *  detail-zoom math can target the book's actual (non-2:3) aspect ratio. */
   onBookHeightKnown?: (height: number) => void;
+  /** Admin-only: when provided, a hover-revealed X sits at the card's top-left
+   *  corner, which hides the entry to the shelf (never deletes it). Receives
+   *  the artwork's on-screen rect so the shelf can fly the card in from where
+   *  it sat. The public canvas never passes this, so the control can't appear
+   *  there. */
+  onHide?: (from: DOMRect) => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const isBook = entry.media_type === "book";
@@ -185,6 +238,7 @@ export default function Card({
             onClick={onClick}
             onPosterPointerDown={onPosterPointerDown}
             onHeightKnown={onBookHeightKnown}
+            onHide={onHide}
           />
         ) : (
           <div
@@ -196,13 +250,16 @@ export default function Card({
             onClick={onClick}
             onPointerDown={onPosterPointerDown}
             title={entry.title}
-          />
+          >
+            {onHide && <HideControl title={entry.title} onHide={onHide} />}
+          </div>
         )}
         <div style={{ opacity: starsOpacity }}>
           <StarRating rating={entry.rating ?? 0} />
         </div>
 
         {isRecentlySynced(entry) && <div className={styles.badge}>NEW</div>}
+
       </div>
 
       <div className={`${styles.hoverDetails} ${showHoverDetails ? styles.visible : ""}`}>

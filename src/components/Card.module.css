@@ -206,3 +206,43 @@
 .hoverDirector {
   color: #a5a5a5;
 }
+
+/* Admin-only hide control. Sits at the card's top-left, mirroring where the
+   NEW badge straddles the top-right edge -- and unlike that badge it needs no
+   width calc, since the left corner doesn't move when a 5-star card scales up.
+   Hidden until the card is hovered so the arranging view stays clean.
+
+   Neutral white, not red: this sends the card to the shelf rather than
+   deleting anything, and nothing here is destructive. */
+.hideButton {
+  position: absolute;
+  /* Offsets are exactly half the box, so the control straddles the corner
+     with half its height above the poster's top edge (and half its width
+     past the left edge, keeping the overhang even on both axes). */
+  left: -13px;
+  top: -13px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: #2d2d2d;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  box-shadow: 0 4px 2px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease, background 120ms ease;
+}
+
+.tilt:hover .hideButton {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.hideButton:hover {
+  background: #4d4d4d;
+}

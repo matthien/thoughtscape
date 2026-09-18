@@ -12,6 +12,9 @@ export interface MediaEntry {
   review_text: string | null;
   contains_spoilers: boolean;
   logged_at: string;
+  /** Set when the entry is hidden from the mat and sitting in the admin
+   *  shelf; null means it's on the mat. Never deleted, only toggled. */
+  shelved_at: string | null;
   external_url: string | null;
   x: number;
   y: number;

@@ -53,21 +53,47 @@
   color: #a5a5a5;
 }
 
+/* Bare text, no fill: with #2d2d2d behind it and a 4px radius this read as a
+   button, which it isn't -- it's a status line. Same treatment as the spoiler
+   label in the detail view, whose one concession to legibility is a shadow
+   rather than a plate. The chartreuse is the star fill, not a second
+   near-identical green.
+
+   top is 32px rather than 24px so the text stays optically where it was: the
+   old pill had 8px of padding above it, and dropping that would otherwise
+   shift the copy up. */
 .adminBadge {
   position: fixed;
-  top: 24px;
+  top: 32px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
-  background: #2d2d2d;
-  color: #d8e04a;
+  color: #e0ea5e;
   font-size: 11px;
   letter-spacing: 2px;
-  padding: 8px 14px;
-  border-radius: 4px;
-  box-shadow: 0 4px 2px rgba(0, 0, 0, 0.25);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.8);
   pointer-events: none;
   white-space: nowrap;
+}
+
+/* Haze behind the status line, so chartreuse text stays readable where a
+   bright poster pans under it -- without a fill, which read as a button.
+   It's its own layer rather than a background on .adminBadge for two
+   reasons: it bleeds past the text box (negative inset) without padding, so
+   the copy doesn't move, and it can be masked. A mask on the badge itself
+   would fade the outer letters too; masking a contentless layer feathers
+   only the haze, and without that feather the blur is a crisp-edged
+   rectangle -- the grey plate again by another route.
+
+   No hand-written vendor prefixes here, deliberately -- see "CSS authoring
+   rules" in CLAUDE.md. */
+.badgeBlur {
+  position: absolute;
+  inset: -5px -18px;
+  z-index: -1;
+  backdrop-filter: blur(4px);
+  mask-image: radial-gradient(ellipse at center, #000 40%, transparent 100%);
+  pointer-events: none;
 }
 
 .saveStatus {
@@ -156,3 +182,7 @@
 .exitButton:hover {
   background: #4d4d4d;
 }
+
+
+
+

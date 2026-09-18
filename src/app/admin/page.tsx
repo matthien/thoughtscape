@@ -34,12 +34,29 @@ export default async function AdminPage({
     );
   }
 
-  const { data, error } = await supabaseAdmin
-    .from("media_entries")
-    .select("*")
-    .order("logged_at", { ascending: false })
-    .limit(40);
-  if (error) throw error;
+  // Two lists: what's on the mat (same 40 the live canvas shows) and what's
+  // hidden in the shelf. The shelf is unbounded — hiding something is meant to
+  // be reversible forever, so there's no limit to drop old entries off the end.
+  const [matResult, shelfResult] = await Promise.all([
+    supabaseAdmin
+      .from("media_entries")
+      .select("*")
+      .is("shelved_at", null)
+      .order("logged_at", { ascending: false })
+      .limit(40),
+    supabaseAdmin
+      .from("media_entries")
+      .select("*")
+      .not("shelved_at", "is", null)
+      .order("shelved_at", { ascending: false }),
+  ]);
+  if (matResult.error) throw matResult.error;
+  if (shelfResult.error) throw shelfResult.error;
 
-  return <AdminCanvas initialEntries={(data ?? []) as MediaEntry[]} />;
+  return (
+    <AdminCanvas
+      initialEntries={(matResult.data ?? []) as MediaEntry[]}
+      initialShelved={(shelfResult.data ?? []) as MediaEntry[]}
+    />
+  );
 }

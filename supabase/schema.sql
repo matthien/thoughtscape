@@ -1,8 +1,8 @@
 create table media_entries (
   id uuid primary key default gen_random_uuid(),
-  source text not null,              -- 'letterboxd' for now
+  source text not null,              -- 'letterboxd' | 'goodreads'
   source_id text not null,           -- stable id or URL from the source
-  media_type text not null,          -- 'movie' for now
+  media_type text not null,          -- 'movie' | 'book'
   title text not null,
   year int,
   director text,                     -- movies only
@@ -12,10 +12,11 @@ create table media_entries (
   review_text text,
   contains_spoilers boolean not null default false,  -- letterboxd spoiler flag; books always false
   logged_at timestamp not null,
+  shelved_at timestamptz,            -- non-null = hidden from the mat, sitting in the admin shelf
   external_url text,
   x numeric,
   y numeric,
-  mat_number int default 1,          -- future-proofing for v2 chapters
+  mat_number int default 1,          -- vestigial: the v2 stacked-mats idea was cancelled
   created_at timestamp default now(),
   unique (source, source_id)
 );

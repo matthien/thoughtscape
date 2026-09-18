@@ -2,9 +2,10 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { MediaEntry } from "@/lib/types";
-import { animateValue, easeOutCubic, lerp } from "@/lib/detailLayout";
+import { animateValue, easeOutCubic, lerp, CARD_W, CARD_H } from "@/lib/detailLayout";
 import { TITLE_POS, GRID_TILE_URL, centerPan } from "@/lib/mat";
 import Card from "./Card";
+import Shelf, { type Incoming } from "./Shelf";
 import styles from "./AdminCanvas.module.css";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
@@ -14,10 +15,18 @@ const MAX_ZOOM = 2.5;
 
 export default function AdminCanvas({
   initialEntries,
+  initialShelved,
 }: {
   initialEntries: MediaEntry[];
+  /** Hidden entries, newest-hidden first — the contents of the shelf drawer. */
+  initialShelved: MediaEntry[];
 }) {
   const [entries, setEntries] = useState(initialEntries);
+  const [shelved, setShelved] = useState(initialShelved);
+  // The card mid-flight from the mat into the shelf, if any. Also acts as the
+  // "a hide is playing" lock, since starting a second one would leave the
+  // first card's reserved slot hidden forever.
+  const [incoming, setIncoming] = useState<Incoming | null>(null);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [panning, setPanning] = useState(false);
@@ -60,6 +69,11 @@ export default function AdminCanvas({
     const el = viewportRef.current;
     if (!el) return;
     function onWheel(e: WheelEvent) {
+      // The shelf scrolls vertically on its own. Zooming the mat out from
+      // under an open drawer isn't what you want, so wheel events over the
+      // shelf never reach the camera — and skipping preventDefault here is
+      // what lets the drawer's native scrolling happen at all.
+      if ((e.target as Element | null)?.closest?.("[data-shelf]")) return;
       e.preventDefault();
       const base = zoomTargetRef.current ?? {
         ...liveRef.current.pan,
@@ -195,6 +209,86 @@ export default function AdminCanvas({
     }
   }
 
+  /* ── hiding and restoring (the shelf) ────────────────────────────────── */
+
+  // Both directions update local state first so the card moves the instant you
+  // act, then reconcile with the server. A failed write rolls the lists back,
+  // since a card silently staying hidden would look like lost data.
+  async function persistShelve(
+    body: { id: string; shelved: boolean; x?: number; y?: number },
+    revert: () => void
+  ) {
+    setSaveState("saving");
+    if (savedTimer.current) clearTimeout(savedTimer.current);
+    try {
+      const res = await fetch("/api/shelve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setSaveState("saved");
+      savedTimer.current = setTimeout(() => setSaveState("idle"), 1500);
+    } catch {
+      revert();
+      setSaveState("error");
+    }
+  }
+
+  // Note: the mat holds the newest 40 unhidden entries, fetched on page load,
+  // so hiding one leaves 39 here until the next load rotates an older entry in.
+  // The live site always shows a full 40.
+  function hideEntry(entry: MediaEntry, from: DOMRect) {
+    if (incoming) return;
+    const prevEntries = entries;
+    const prevShelved = shelved;
+    const shelvedEntry = { ...entry, shelved_at: new Date().toISOString() };
+
+    // The card leaves the mat immediately and joins the front of the shelf, so
+    // its slot is laid out and measurable. What the eye follows in between is
+    // the flying copy the Shelf draws from `incoming`.
+    setEntries((prev) => prev.filter((e) => e.id !== entry.id));
+    setShelved((prev) => [shelvedEntry, ...prev]);
+    setIncoming({
+      entry: shelvedEntry,
+      from: { x: from.left, y: from.top, w: from.width, h: from.height },
+    });
+
+    void persistShelve({ id: entry.id, shelved: true }, () => {
+      setEntries(prevEntries);
+      setShelved(prevShelved);
+      setIncoming(null);
+    });
+  }
+
+  function restoreEntry(entry: MediaEntry, drop: { x: number; y: number } | null) {
+    const prevEntries = entries;
+    const prevShelved = shelved;
+
+    let { x, y } = entry;
+    if (drop) {
+      // Screen point -> world coordinates (the inverse of the world div's
+      // translate-then-scale transform), then offset by half a card so the
+      // card lands centered on the cursor rather than hanging off it. Book
+      // covers aren't exactly CARD_H tall, so their centering is approximate
+      // — a few pixels on a hand-arranged mat doesn't matter.
+      x = (drop.x - pan.x) / zoom - CARD_W / 2;
+      y = (drop.y - pan.y) / zoom - CARD_H / 2;
+    }
+
+    setShelved((prev) => prev.filter((e) => e.id !== entry.id));
+    setEntries((prev) => [...prev, { ...entry, shelved_at: null, x, y }]);
+    void persistShelve(
+      // Omitting x/y on a click-restore leaves the stored position untouched,
+      // so the card reappears exactly where it was hidden from.
+      drop ? { id: entry.id, shelved: false, x, y } : { id: entry.id, shelved: false },
+      () => {
+        setEntries(prevEntries);
+        setShelved(prevShelved);
+      }
+    );
+  }
+
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
 
@@ -264,11 +358,13 @@ export default function AdminCanvas({
             entry={entry}
             interactive={false}
             onPosterPointerDown={(e) => startCardDrag(i, e)}
+            onHide={(from) => hideEntry(entry, from)}
           />
         ))}
       </div>
 
       <div className={styles.adminBadge}>
+        <div className={styles.badgeBlur} />
         ADMIN MODE — drag cards to arrange
         {statusLabel && <span className={styles.saveStatus}> · {statusLabel}</span>}
         {syncResult && <span className={styles.saveStatus}> · {syncResult}</span>}
@@ -288,6 +384,16 @@ export default function AdminCanvas({
       <a className={styles.exitButton} href="/">
         back to live
       </a>
+
+      {/* Renders last and sits at z-index 30+, so the drawer slides over the
+          reset-view and back-to-live buttons (both z-index 10) as it opens
+          instead of having to make room for them. */}
+      <Shelf
+        entries={shelved}
+        onRestore={restoreEntry}
+        incoming={incoming}
+        onIncomingLanded={() => setIncoming(null)}
+      />
     </div>
   );
 }
