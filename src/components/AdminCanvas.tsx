@@ -235,9 +235,6 @@ export default function AdminCanvas({
     }
   }
 
-  // Note: the mat holds the newest 40 unhidden entries, fetched on page load,
-  // so hiding one leaves 39 here until the next load rotates an older entry in.
-  // The live site always shows a full 40.
   function hideEntry(entry: MediaEntry, from: DOMRect) {
     if (incoming) return;
     const prevEntries = entries;
