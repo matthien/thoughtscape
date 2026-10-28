@@ -1,4 +1,5 @@
 import { XMLParser } from "fast-xml-parser";
+import { decodeEntities } from "./decodeEntities";
 
 const FEED_URL = "https://letterboxd.com/matttheinn/rss/";
 
@@ -30,7 +31,7 @@ function parseDescription(html: string): { cover: string | null; review: string 
 
   // [\s\S] instead of the dotAll `s` flag: the build target predates ES2018.
   const paragraphs = [...html.matchAll(/<p>([\s\S]*?)<\/p>/g)]
-    .map((m) => m[1].replace(/<[^>]+>/g, "").trim())
+    .map((m) => decodeEntities(m[1].replace(/<[^>]+>/g, "")).trim())
     .filter((p) => p.length > 0)
     .filter((p) => !/^<img/.test(p) && !imgMatch?.[0].includes(p))
     .filter((p) => !/^Watched on /.test(p))

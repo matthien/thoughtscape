@@ -1,4 +1,5 @@
 import { XMLParser } from "fast-xml-parser";
+import { decodeEntities } from "./decodeEntities";
 
 const FEED_URL = "https://www.goodreads.com/review/list_rss/199102300?shelf=read";
 
@@ -18,7 +19,7 @@ export interface ParsedBookEntry {
 // (nothing to reconstruct), so cleanup here is just decoding/stripping any
 // stray markup and trimming — not re-inserting structure that's already gone.
 function cleanReview(raw: string): string | null {
-  const cleaned = raw.replace(/<[^>]+>/g, "").trim();
+  const cleaned = decodeEntities(raw.replace(/<[^>]+>/g, "")).trim();
   return cleaned.length ? cleaned : null;
 }
 
