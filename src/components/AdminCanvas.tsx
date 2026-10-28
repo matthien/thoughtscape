@@ -306,7 +306,11 @@ export default function AdminCanvas({
       const totalUpdated = body.movies.updated + body.books.updated;
       if (totalUpdated > 0) parts.push(`${totalUpdated} updated`);
       if (body.directors > 0) parts.push(`${body.directors} directors added`);
-      setSyncResult(parts.length ? parts.join(" · ") : "no changes");
+      if (parts.length === 0) parts.push("no changes");
+      // A feed that failed was skipped, not synced — say so rather than
+      // letting "no changes" imply it was checked.
+      for (const err of body.feedErrors ?? []) parts.push(`skipped: ${err}`);
+      setSyncResult(parts.join(" · "));
 
       // New/updated entries come from the server payload, so the simplest
       // correct refresh is a reload.

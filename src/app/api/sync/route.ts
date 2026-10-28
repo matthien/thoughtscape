@@ -91,15 +91,27 @@ export async function POST() {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  let movies, books;
-  try {
-    [movies, books] = await Promise.all([fetchLetterboxdEntries(), fetchGoodreadsEntries()]);
-  } catch (e) {
+  // allSettled, not all: the two feeds are independent, so one source being
+  // down (Goodreads' RSS started 404ing site-wide in Oct 2026) shouldn't
+  // block the other from syncing. A failed feed syncs as an empty list and
+  // its error is reported back; only both failing is a hard error.
+  const [movieFeed, bookFeed] = await Promise.allSettled([
+    fetchLetterboxdEntries(),
+    fetchGoodreadsEntries(),
+  ]);
+  const reason = (r: PromiseRejectedResult) =>
+    r.reason instanceof Error ? r.reason.message : String(r.reason);
+  const feedErrors: string[] = [];
+  if (movieFeed.status === "rejected") feedErrors.push(reason(movieFeed));
+  if (bookFeed.status === "rejected") feedErrors.push(reason(bookFeed));
+  if (feedErrors.length === 2) {
     return NextResponse.json(
-      { error: `feed fetch failed: ${e instanceof Error ? e.message : e}` },
+      { error: `feed fetch failed: ${feedErrors.join("; ")}` },
       { status: 502 }
     );
   }
+  const movies = movieFeed.status === "fulfilled" ? movieFeed.value : [];
+  const books = bookFeed.status === "fulfilled" ? bookFeed.value : [];
 
   let movieResult, bookResult;
   try {
@@ -148,5 +160,6 @@ export async function POST() {
     movies: movieResult,
     books: bookResult,
     directors,
+    feedErrors,
   });
 }
