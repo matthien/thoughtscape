@@ -16,6 +16,8 @@ export interface MediaEntry {
    *  shelf; null means it's on the mat. Never deleted, only toggled. */
   shelved_at: string | null;
   external_url: string | null;
+  /** Not a column: set by groupRewatches() when several rows are one film. */
+  watch_count?: number;
   x: number;
   y: number;
   mat_number: number;

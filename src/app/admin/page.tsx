@@ -1,6 +1,7 @@
 import { isAdmin } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { MediaEntry } from "@/lib/types";
+import { groupRewatches } from "@/lib/rewatches";
 import AdminCanvas from "@/components/AdminCanvas";
 import { login } from "./actions";
 import styles from "./page.module.css";
@@ -54,8 +55,8 @@ export default async function AdminPage({
 
   return (
     <AdminCanvas
-      initialEntries={(matResult.data ?? []) as MediaEntry[]}
-      initialShelved={(shelfResult.data ?? []) as MediaEntry[]}
+      initialEntries={groupRewatches((matResult.data ?? []) as MediaEntry[])}
+      initialShelved={groupRewatches((shelfResult.data ?? []) as MediaEntry[])}
     />
   );
 }

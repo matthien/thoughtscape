@@ -1,5 +1,6 @@
 import { supabaseBrowser } from "./client";
 import type { MediaEntry } from "@/lib/types";
+import { groupRewatches } from "@/lib/rewatches";
 
 export async function getRecentEntries(): Promise<MediaEntry[]> {
   const { data, error } = await supabaseBrowser
@@ -12,5 +13,5 @@ export async function getRecentEntries(): Promise<MediaEntry[]> {
     .order("logged_at", { ascending: false });
 
   if (error) throw error;
-  return data ?? [];
+  return groupRewatches(data ?? []);
 }

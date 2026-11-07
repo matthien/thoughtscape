@@ -77,7 +77,16 @@ export default function DetailsView({
       >
         <div className={styles.heading}>
           <div className={styles.titleBlock}>
-            <div className={styles.title}>{entry.title}</div>
+            <div className={styles.titleRow}>
+              <div className={styles.title}>{entry.title}</div>
+              {(entry.watch_count ?? 1) > 1 && (
+                <div className={styles.rewatch} title={`Watched ${entry.watch_count} times`}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/icons/refresh-cw.svg" width={12} height={12} alt="" />
+                  <span>{entry.watch_count}</span>
+                </div>
+              )}
+            </div>
             {entry.director ? (
               <div className={styles.director}>Directed by {entry.director}</div>
             ) : (

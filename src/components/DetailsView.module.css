@@ -29,6 +29,27 @@
   letter-spacing: -0.28px;
 }
 
+/* Rewatched films carry a loop icon + watch count after the title (Figma:
+   rewatched1). Top-aligned rather than centered so a title that wraps keeps
+   the count on its first line. */
+.titleRow {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.rewatch {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+  font-size: 14px;
+  color: #a5a5a5;
+  letter-spacing: -0.28px;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+
 .director {
   font-size: 12px;
   color: #a5a5a5;

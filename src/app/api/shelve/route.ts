@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAdmin } from "@/lib/adminAuth";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { rewatchKey } from "@/lib/rewatches";
 
 // Toggles an entry between the mat and the admin shelf. There is deliberately
 // no delete route: hiding is always reversible, so rows are never removed.
@@ -29,10 +30,33 @@ export async function POST(request: Request) {
     patch.y = y;
   }
 
+  // A rewatched film is several rows shown as one card, so every watch moves
+  // together — otherwise hiding the card would leave its other watches on
+  // the mat.
+  const { data: row, error: rowError } = await supabaseAdmin
+    .from("media_entries")
+    .select("id, source, title, year")
+    .eq("id", id)
+    .single();
+  if (rowError) {
+    return NextResponse.json({ error: rowError.message }, { status: 500 });
+  }
+  const { data: siblings, error: siblingError } = await supabaseAdmin
+    .from("media_entries")
+    .select("id, source, title, year")
+    .eq("source", row.source)
+    .eq("title", row.title);
+  if (siblingError) {
+    return NextResponse.json({ error: siblingError.message }, { status: 500 });
+  }
+  const ids = (siblings ?? [])
+    .filter((s) => rewatchKey(s) === rewatchKey(row))
+    .map((s) => s.id);
+
   const { error } = await supabaseAdmin
     .from("media_entries")
     .update(patch)
-    .eq("id", id);
+    .in("id", ids.length ? ids : [id]);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
