@@ -1,0 +1,191 @@
+/* Values come from the Figma exploration "A — filter strip · dim in place"
+   (section "filter · sort · search — explorations"), which in turn borrows
+   the shelf pill's surface: a near-opaque dark plate with a faint white
+   hairline. Chips use the same 4px radius and 12px type as the other
+   buttons on the mat.
+
+   No hand-written vendor prefixes -- see "CSS authoring rules" in
+   CLAUDE.md (backdrop-filter in particular). */
+
+.strip {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  /* Above the ruler (5), level with the reset button (10), below the
+     detail view. */
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px 5px 6px;
+  background: rgba(38, 38, 42, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(24px);
+  font-size: 12px;
+  letter-spacing: -0.24px;
+  white-space: nowrap;
+  cursor: default;
+  /* Hidden while a detail view is open: faded and unclickable, but kept
+     mounted so the filter survives opening and closing a card. */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.strip.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.divider {
+  width: 1px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+
+/* ── search ─────────────────────────────────────────────────────────── */
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px 5px 10px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #a5a5a5;
+  cursor: text;
+  transition: background 120ms ease;
+}
+
+.search:focus-within {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.input {
+  width: 190px;
+  background: none;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+.input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.key {
+  padding: 0 5px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+  font: inherit;
+  font-size: 10px;
+  line-height: 15px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ── all / movies / books ───────────────────────────────────────────── */
+
+.segment {
+  display: flex;
+  gap: 2px;
+}
+
+.chip,
+.star,
+.clear {
+  background: none;
+  border: none;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.chip {
+  padding: 5px 10px;
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.55);
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.chip:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.chip.on {
+  background: #3a3a3f;
+  color: #ffffff;
+}
+
+/* ── minimum rating ─────────────────────────────────────────────────── */
+
+.rating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px 0 6px;
+}
+
+.stars {
+  display: flex;
+}
+
+.star {
+  display: flex;
+  /* 3px of hit area each side keeps the stars visually tight (same pitch
+     as the Figma row) while each is still an easy target. */
+  padding: 5px 1.5px;
+}
+
+.starOn {
+  fill: #e0ea5e;
+}
+
+.starOff {
+  /* Same dim placeholder as StarRating's unfilled stars. */
+  fill: rgba(255, 255, 255, 0.15);
+}
+
+.ratingLabel {
+  /* Wide enough for the longest label ("4★ or more"), so the strip doesn't
+     jump in width while you hover across the stars. */
+  min-width: 10ch;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.ratingLabel.muted {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ── count + clear ──────────────────────────────────────────────────── */
+
+.count {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 0 0 4px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.clear {
+  padding: 5px 0;
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.clear:hover {
+  color: #ffffff;
+}
+
+.chip:focus-visible,
+.star:focus-visible,
+.clear:focus-visible {
+  outline: 1px solid rgba(224, 234, 94, 0.6);
+  outline-offset: 1px;
+}

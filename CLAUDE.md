@@ -44,7 +44,13 @@ One mat, every unshelved entry (the original 40-card cap was removed 2026-10-19)
    - `pointer-events: none` at `z-index: 5` — above the world, below the reset button and detail view — so it never eats a drag.
    - It's fed the canvas's `camera` rather than raw pan/zoom, so it tracks the camera through the detail-zoom tween too, and fades to 0.25 opacity (300ms, matching the grid) whenever the detail view is open.
    - Currently **live canvas only** — `AdminCanvas` doesn't render it.
-7. Review text is expected to be short (a few sentences). Still cap the container and scroll on overflow so a long review never breaks layout.
+7. **Filter strip** (built: `src/components/FilterStrip.tsx`, rules in `src/lib/filter.ts`). This is direction "A" from the Figma section "filter · sort · search — explorations", which Matt picked over a search palette, sort-by-rearranging, and a side panel. It's a slim plate pinned top-center with a search box, all / movies / books, and a five-star picker. **Filtering never moves a card**: non-matches fade to 0.15 in place and get `pointer-events: none` (no hover, no click, drags pass through to the mat), so the hand arrangement stays readable. Copy is Matt's: "4★ or more" (and "5★ only" at the top end, since nothing is above 5), and "N of M match" plus "clear", shown only while a filter is on.
+   - Search matches title, director/author and review text. It's case- and accent-insensitive, and every typed word must appear but not necessarily in the same field. `/` focuses it from anywhere on the mat. In the box, Escape first clears the text and then leaves the box.
+   - Clicking the star that's already set turns the rating filter off, so there's no separate "any" control. Unrated entries fail any star filter.
+   - With a filter on, the detail view's arrows step only between matches. A deep-linked card that doesn't match is still shown, never faded.
+   - The strip fades out (but stays mounted, keeping the filter) whenever a detail view is open or animating. It stops `pointerdown` from propagating, or the mat's pan would capture the pointer and steal focus from the input.
+   - Not built yet: making the count fit the camera to the matches (suggested, not agreed), and the strip on the admin canvas.
+8. Review text is expected to be short (a few sentences). Still cap the container and scroll on overflow so a long review never breaks layout.
 
 ### Admin mode (private)
 

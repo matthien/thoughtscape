@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { MediaEntry } from "@/lib/types";
+import { EMPTY_FILTER, isFilterActive, matchesFilter, type MediaFilter } from "@/lib/filter";
 import {
   computeZoomTransform,
   animateValue,
@@ -16,6 +17,7 @@ import { TITLE_POS, GRID_TILE_URL, centerPan } from "@/lib/mat";
 import Card from "./Card";
 import DetailsView from "./DetailsView";
 import Ruler from "./Ruler";
+import FilterStrip from "./FilterStrip";
 import styles from "./Canvas.module.css";
 
 const OPEN_CLOSE_DURATION = 700;
@@ -54,6 +56,17 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
   // Card's onBookHeightKnown); computeZoomTransform falls back to the movie
   // height for the brief window before that.
   const [bookHeights, setBookHeights] = useState<Record<string, number>>({});
+
+  // The filter strip. Filtering never moves a card: non-matches just fade in
+  // place (see Card's filteredOut), so the hand arrangement stays intact.
+  // `matches` is one boolean per entry, in the same order as `entries`.
+  const [filter, setFilter] = useState<MediaFilter>(EMPTY_FILTER);
+  const filterActive = isFilterActive(filter);
+  const matches = useMemo(
+    () => entries.map((e) => !filterActive || matchesFilter(e, filter)),
+    [entries, filter, filterActive]
+  );
+  const matchCount = matches.filter(Boolean).length;
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const dragOrigin = useRef({ x: 0, y: 0 });
@@ -317,13 +330,14 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
 
   // Arrow navigation is spatial, not chronological: from the open card,
   // each arrow flies to the nearest card whose x lies in that direction.
+  // With a filter on, it only steps between cards that match it.
   function nearestIndex(dir: -1 | 1): number | null {
     if (selectedIndex === null) return null;
     const cur = entries[selectedIndex];
     let best: number | null = null;
     let bestDist = Infinity;
     entries.forEach((e, i) => {
-      if (i === selectedIndex) return;
+      if (i === selectedIndex || !matches[i]) return;
       const dx = e.x - cur.x;
       if (dx * dir <= 0) return;
       const dist = Math.hypot(dx, e.y - cur.y);
@@ -505,8 +519,10 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
           const isSelected = i === selectedIndex;
           // In the details view, other cards peeking in from the edges stay
           // clickable and fly the camera straight to their own detail.
-          const onClick =
-            phase === "idle"
+          // Cards the filter hides aren't clickable in either view.
+          const onClick = !matches[i]
+            ? undefined
+            : phase === "idle"
               ? () => openDetails(i)
               : phase === "details" && !isSelected
                 ? () => navigateToIndex(i)
@@ -518,6 +534,9 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
               onClick={onClick}
               interactive={phase === "idle"}
               dimmed={phase === "details" && !isSelected}
+              // The selected card is never faded, even if it doesn't match
+              // (possible via a deep link to /film/<slug>).
+              filteredOut={!matches[i] && !isSelected}
               selected={isSelected}
               rotationOverrideDeg={
                 isSelected && phase !== "idle" ? lerp(rotationFor(entry.id), 0, t) : undefined
@@ -530,6 +549,14 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
           );
         })}
       </div>
+
+      <FilterStrip
+        filter={filter}
+        onChange={setFilter}
+        matchCount={matchCount}
+        total={entries.length}
+        visible={phase === "idle"}
+      />
 
       {phase === "idle" && (
         <button

@@ -175,6 +175,7 @@ export default function Card({
   onPosterPointerDown,
   interactive = true,
   dimmed = false,
+  filteredOut = false,
   selected = false,
   rotationOverrideDeg,
   starsOpacity = 1,
@@ -189,6 +190,9 @@ export default function Card({
   interactive?: boolean;
   /** Fades non-selected cards once the detail view has settled. */
   dimmed?: boolean;
+  /** Doesn't match the filter strip: faded in place and ignores the pointer
+   *  (no hover popover, no click), so drags pass straight through to the mat. */
+  filteredOut?: boolean;
   /** True whenever this card is the one being zoomed into/shown in detail — the 5-star size
    *  boost is suppressed then, since the detail zoom math assumes the base 140x210 card size. */
   selected?: boolean;
@@ -219,7 +223,13 @@ export default function Card({
   return (
     <div
       className={styles.wrapper}
-      style={{ left: entry.x, top: entry.y, opacity: dimmed ? 0.08 : 1 }}
+      style={{
+        left: entry.x,
+        top: entry.y,
+        // The detail view's fade wins when both apply: it's the deeper one.
+        opacity: dimmed ? 0.08 : filteredOut ? 0.15 : 1,
+        pointerEvents: filteredOut ? "none" : undefined,
+      }}
       onMouseEnter={() => interactive && setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
