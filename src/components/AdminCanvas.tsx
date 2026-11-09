@@ -13,6 +13,9 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 const MIN_ZOOM = 0.4;
 const MAX_ZOOM = 2.5;
 
+/** sessionStorage key that carries the sync summary across the post-sync reload. */
+const SYNC_RESULT_KEY = "thoughtscape:lastSyncResult";
+
 export default function AdminCanvas({
   initialEntries,
   initialShelved,
@@ -289,6 +292,25 @@ export default function AdminCanvas({
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
 
+  // A sync that changed anything reloads the page to pick up the new rows,
+  // which wipes React state — so the result used to flash for under a second
+  // and vanish. It's stashed in sessionStorage across the reload instead, and
+  // picked back up here. Read in an effect, not the useState initializer,
+  // because sessionStorage doesn't exist during the server render and reading
+  // it there would mismatch hydration. Once shown it stays until the next sync.
+  useEffect(() => {
+    try {
+      const carried = sessionStorage.getItem(SYNC_RESULT_KEY);
+      if (carried) {
+        sessionStorage.removeItem(SYNC_RESULT_KEY);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setSyncResult(carried);
+      }
+    } catch {
+      // Storage blocked (private window etc.) — the message is just lost.
+    }
+  }, []);
+
   async function syncNow() {
     if (syncing) return;
     setSyncing(true);
@@ -310,13 +332,20 @@ export default function AdminCanvas({
       // A feed that failed was skipped, not synced — say so rather than
       // letting "no changes" imply it was checked.
       for (const err of body.feedErrors ?? []) parts.push(`skipped: ${err}`);
-      setSyncResult(parts.join(" · "));
+      const summary = parts.join(" · ");
+      setSyncResult(summary);
 
       // New/updated entries come from the server payload, so the simplest
-      // correct refresh is a reload.
+      // correct refresh is a reload. The summary rides across it in
+      // sessionStorage (see the effect above) so it's still there afterwards.
       const totalInserted = body.movies.inserted + body.books.inserted;
       if (totalInserted > 0 || totalUpdated > 0) {
-        setTimeout(() => window.location.reload(), 900);
+        try {
+          sessionStorage.setItem(SYNC_RESULT_KEY, summary);
+        } catch {
+          // Storage blocked — reload anyway; the cards matter more.
+        }
+        window.location.reload();
       }
     } catch (e) {
       setSyncResult(e instanceof Error ? e.message : "sync failed");
@@ -365,7 +394,6 @@ export default function AdminCanvas({
       </div>
 
       <div className={styles.adminBadge}>
-        <div className={styles.badgeBlur} />
         ADMIN MODE — drag cards to arrange
         {statusLabel && <span className={styles.saveStatus}> · {statusLabel}</span>}
         {syncResult && <span className={styles.saveStatus}> · {syncResult}</span>}

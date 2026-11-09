@@ -1,6 +1,6 @@
 create table media_entries (
   id uuid primary key default gen_random_uuid(),
-  source text not null,              -- 'letterboxd' | 'goodreads'
+  source text not null,              -- 'letterboxd' | 'hardcover' (legacy rows: 'goodreads')
   source_id text not null,           -- stable id or URL from the source
   media_type text not null,          -- 'movie' | 'book'
   title text not null,
