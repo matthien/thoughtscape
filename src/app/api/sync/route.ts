@@ -88,14 +88,35 @@ type SyncEntry = {
 // Existing rows get their data refreshed (edited reviews propagate) but
 // keep their hand-placed x/y; new rows land at a jittered position so
 // nothing ever sits unplaced.
+// The feed fields the sync writes, and so the ones compared to decide
+// whether an existing row actually changed.
+const SYNCED_FIELDS =
+  "title, year, cover_url, rating, review_text, logged_at, external_url, director, author, contains_spoilers";
+
+// Does a stored column already hold the value the sync is about to write?
+// logged_at needs care: the column is `timestamp` (no time zone), so it
+// comes back as "2026-08-18T00:00:00" while adapters send
+// "2026-08-18T00:00:00.000Z" -- the same instant, different text. Stored
+// values are UTC (that's what the sync writes), so a missing zone means Z.
+function sameValue(field: string, stored: unknown, next: unknown): boolean {
+  if (stored == null || next == null) return stored == null && next == null;
+  if (field === "logged_at") {
+    const s = String(stored);
+    const storedMs = Date.parse(/(Z|[+-]\d\d:?\d\d)$/.test(s) ? s : `${s}Z`);
+    return storedMs === Date.parse(String(next));
+  }
+  if (typeof next === "number") return Number(stored) === next;
+  return stored === next;
+}
+
 async function syncSource(source: string, mediaType: string, parsed: SyncEntry[]) {
   const { data: existingRows, error: selectError } = await supabaseAdmin
     .from("media_entries")
-    .select("id, source_id, title, year, x, y, shelved_at")
+    .select(`id, source_id, x, y, shelved_at, ${SYNCED_FIELDS}`)
     .eq("source", source)
     .order("created_at", { ascending: true });
   if (selectError) throw new Error(selectError.message);
-  const existing = new Set((existingRows ?? []).map((r) => r.source_id));
+  const existing = new Map((existingRows ?? []).map((r) => [r.source_id, r]));
   // A rewatch is a new row for a film that's already on the mat; it takes
   // the first watch's spot and shelved state so the merged card stays put
   // (and stays hidden if it was hidden) instead of landing somewhere new.
@@ -124,7 +145,8 @@ async function syncSource(source: string, mediaType: string, parsed: SyncEntry[]
         : {}),
     };
 
-    if (existing.has(entry.source_id)) {
+    const stored = existing.get(entry.source_id);
+    if (stored) {
       // Never let a feed that's momentarily dropped the rating wipe one we
       // already have (Goodreads RSS used to report fresh ratings as 0 for a
       // while; kept as a guard for any source that does the same). Omitting
@@ -136,9 +158,21 @@ async function syncSource(source: string, mediaType: string, parsed: SyncEntry[]
       // (books adopted from Goodreads keep their real read dates).
       if (entry.logged_at_estimated) delete updatePayload.logged_at;
 
+      // Write only the fields that really differ, and count the row as
+      // "updated" only if there were any. Before this, every row already in
+      // the database was rewritten and counted on every sync, so the admin
+      // bar said "59 updated" when nothing had changed (and reloaded the
+      // page for nothing).
+      const changes = Object.fromEntries(
+        Object.entries(updatePayload).filter(
+          ([field, value]) => !sameValue(field, stored[field as keyof typeof stored], value)
+        )
+      );
+      if (Object.keys(changes).length === 0) continue;
+
       const { error } = await supabaseAdmin
         .from("media_entries")
-        .update(updatePayload)
+        .update(changes)
         .eq("source", source)
         .eq("source_id", entry.source_id);
       if (error) throw new Error(error.message);
