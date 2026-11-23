@@ -12,15 +12,20 @@ import {
   slugify,
   detailPath,
   posterHeightFor,
+  CARD_W,
+  CARD_H,
 } from "@/lib/detailLayout";
 import { TITLE_POS, GRID_TILE_URL, centerPan } from "@/lib/mat";
 import Card from "./Card";
 import DetailsView from "./DetailsView";
 import Ruler from "./Ruler";
-import FilterStrip from "./FilterStrip";
+import SearchSpotlight from "./SearchSpotlight";
 import styles from "./Canvas.module.css";
 
 const OPEN_CLOSE_DURATION = 700;
+// A book's cover height / width before its <img> has reported in: a typical
+// trade paperback (x1.56), used only for the search panel's thumbnails.
+const BOOK_FALLBACK_HEIGHT = CARD_W * 1.56;
 const NAVIGATE_DURATION = 450;
 const MIN_ZOOM = 0.4;
 const MAX_ZOOM = 2.5;
@@ -57,7 +62,7 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
   // height for the brief window before that.
   const [bookHeights, setBookHeights] = useState<Record<string, number>>({});
 
-  // The filter strip. Filtering never moves a card: non-matches just fade in
+  // Search/filter (SearchSpotlight). Filtering never moves a card: non-matches just fade in
   // place (see Card's filteredOut), so the hand arrangement stays intact.
   // `matches` is one boolean per entry, in the same order as `entries`.
   const [filter, setFilter] = useState<MediaFilter>(EMPTY_FILTER);
@@ -66,7 +71,10 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
     () => entries.map((e) => !filterActive || matchesFilter(e, filter)),
     [entries, filter, filterActive]
   );
-  const matchCount = matches.filter(Boolean).length;
+  // Whether the search panel is open. It's only shown while the mat is idle
+  // (see the render). Opening a result closes it, so leaving that detail
+  // view lands back on the mat.
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const dragOrigin = useRef({ x: 0, y: 0 });
@@ -130,6 +138,9 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
     if (!el) return;
     function onWheel(e: WheelEvent) {
       if (liveRef.current.phase !== "idle") return;
+      // The search overlay sits over the mat; scrolling there shouldn't
+      // zoom the mat underneath it.
+      if ((e.target as Element | null)?.closest?.("[data-search]")) return;
       e.preventDefault();
 
       // Accumulate onto the in-flight target (if any), not the live value.
@@ -506,7 +517,9 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
           style={{
             left: TITLE_POS.x,
             top: TITLE_POS.y,
-            opacity: phase === "details" ? 0.08 : 1,
+            // Fades back while a filter is on so the matches lead. The
+            // detail view's deeper fade wins rather than stacking with it.
+            opacity: phase === "details" ? 0.08 : filterActive ? 0.25 : 1,
           }}
         >
           <div className={styles.titleMain}>matt&#39;s thoughtscape</div>
@@ -550,10 +563,28 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
         })}
       </div>
 
-      <FilterStrip
+      <SearchSpotlight
         filter={filter}
         onChange={setFilter}
-        matchCount={matchCount}
+        open={searchOpen && phase === "idle"}
+        onOpenChange={setSearchOpen}
+        // Matching entries in mat order (entries arrive logged_at desc).
+        // Not re-sorted by relevance.
+        results={entries.flatMap((entry, index) =>
+          matches[index]
+            ? [
+                {
+                  entry,
+                  index,
+                  coverRatio:
+                    entry.media_type === "book"
+                      ? (bookHeights[entry.id] ?? BOOK_FALLBACK_HEIGHT) / CARD_W
+                      : CARD_H / CARD_W,
+                },
+              ]
+            : []
+        )}
+        onOpenResult={openDetails}
         total={entries.length}
         visible={phase === "idle"}
       />

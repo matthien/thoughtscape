@@ -1,0 +1,436 @@
+/* Spotlight-style search for the public mat (replaces the top-center filter
+   strip). Values are from Matt's spec. Type is the site's Roboto Mono
+   (inherited from body), not the Space Mono the spec named.
+
+   New tokens introduced here (not used elsewhere on the site yet):
+     panel #2D2D31 · search field #252529 · muted #8a8a90 · faint #5c5c62
+     unlit star #4A4A4C
+   The chartreuse #E0EA5E is the same token as the card stars, and appears
+   only on stars and the selected type pill.
+
+   No hand-written vendor prefixes -- see "CSS authoring rules" in
+   CLAUDE.md (backdrop-filter in particular). */
+
+/* ── rest state: the corner hint ────────────────────────────────────── */
+
+.hint {
+  position: fixed;
+  left: 20px;
+  bottom: 32px;
+  /* Above the ruler (5), level with the reset button. */
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: calc(100vw - 40px);
+  padding: 0;
+  background: none;
+  border: none;
+  font: inherit;
+  /* Bigger and brighter than the spec's 11px #5c5c62 at 62%: Matt found
+     that too small and too dark to read. */
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: #8a8a90;
+  cursor: pointer;
+  /* Hidden while a detail view is open or the panel itself is up. */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease, color 200ms ease;
+}
+
+.hint.hintVisible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Filtering (and hover) steps up to the site's secondary text gray, so an
+   active filter reads as "on" against the resting hint. */
+.hint.hintVisible:hover,
+.hint.hintVisible.hintActive {
+  color: #a5a5a5;
+}
+
+.hintKey {
+  padding: 1px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.hintLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── open state: overlay + panel ────────────────────────────────────── */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  /* Above the ruler, reset button and hint; the detail view can't be open
+     at the same time, so its stacking doesn't matter here. */
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 92px;
+  background: rgba(8, 8, 10, 0.72);
+  backdrop-filter: blur(3px);
+  cursor: default;
+  animation: fadeIn 140ms ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+}
+
+.panel {
+  width: min(480px, 100% - 44px);
+  background: #2d2d31;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+}
+
+.panel button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* ROW 1 — search */
+
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 15px 17px;
+  background: #252529;
+  color: #5c5c62;
+  cursor: text;
+}
+
+.searchRow svg {
+  flex-shrink: 0;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  font: inherit;
+  font-size: 14px;
+  color: #e8e8ea;
+}
+
+.input::placeholder {
+  color: #5c5c62;
+}
+
+.panel .clearQuery {
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 2px;
+  color: #5c5c62;
+}
+
+.panel .clearQuery:hover {
+  color: #8a8a90;
+}
+
+/* ROW 2 — facets */
+
+.facetRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 11px 17px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.pills {
+  display: flex;
+  gap: 6px;
+}
+
+.panel .pill {
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 10.5px;
+  color: #8a8a90;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.panel .pill:hover {
+  color: #e8e8ea;
+}
+
+.panel .pill.pillOn {
+  background: #e0ea5e;
+  color: #16170f;
+}
+
+.rating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.caption {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #5c5c62;
+}
+
+.stars {
+  display: flex;
+}
+
+.star {
+  position: relative;
+  display: flex;
+  /* A little hit area around each star while keeping the row tight. */
+  padding: 4px 1.5px;
+}
+
+/* Each star is split into two invisible click targets laid over it: left
+   half = n - 0.5, right half = n. They cover the padding too, so the whole
+   cell stays clickable. */
+.panel .halfLeft,
+.panel .halfRight {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+}
+
+.panel .halfLeft {
+  left: 0;
+}
+
+.panel .halfRight {
+  right: 0;
+}
+
+/* Holds the shared half-star clipPath; takes no space. */
+.defs {
+  position: absolute;
+}
+
+.starUnlit {
+  fill: #4a4a4c;
+}
+
+.starPreview {
+  fill: rgba(224, 234, 94, 0.5);
+}
+
+.starLit {
+  fill: #e0ea5e;
+}
+
+/* RESULTS — only while a filter is on */
+
+.results {
+  max-height: 258px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 17px;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+}
+
+.result:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Highlighted = what Enter would open. Wins over hover. */
+.result.resultOn {
+  background: rgba(255, 255, 255, 0.06);
+  border-left-color: #e0ea5e;
+}
+
+/* Thumbnails: a miniature of the entry's mat card. Posters keep the mat
+   card's hairline border; books keep the clipped corner and curl. */
+
+.thumbPoster,
+.thumbBook {
+  position: relative;
+  flex-shrink: 0;
+  display: block;
+}
+
+.thumbPoster {
+  border: 0.5px solid rgba(117, 117, 117, 0.25);
+  border-radius: 1px 1px 0 0;
+  overflow: hidden;
+  background: #252529;
+}
+
+.thumbBook {
+  /* The cream page under the clipped corner, same as the mat card. */
+  background: #ddd6c4;
+}
+
+.thumbPoster img,
+.thumbBook img {
+  display: block;
+  object-fit: cover;
+}
+
+.thumbCurl {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  overflow: visible;
+}
+
+/* min-width: 0 lets the title truncate instead of pushing the stars out. */
+.meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.resultTitle {
+  font-size: 12px;
+  color: #e8e8ea;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mark {
+  background: rgba(224, 234, 94, 0.22);
+  color: #e0ea5e;
+  border-radius: 2px;
+}
+
+.resultSub {
+  margin-top: 3px;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: #5c5c62;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.resultStars {
+  flex-shrink: 0;
+  display: flex;
+  margin-left: auto;
+}
+
+/* No results */
+
+.empty {
+  padding: 20px 17px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 11px;
+  color: #5c5c62;
+}
+
+.emptyQuery {
+  color: #8a8a90;
+}
+
+/* FOOTER — key hints + count */
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 17px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 9.5px;
+  color: #5c5c62;
+}
+
+.key {
+  padding: 0 4px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 3px;
+  font: inherit;
+}
+
+/* STATUS BAND — count + clear all, only while a filter is on */
+
+.statusBand {
+  display: flex;
+  align-items: center;
+  padding: 10px 17px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 11px;
+  color: #8a8a90;
+}
+
+.count {
+  font-weight: 600;
+  color: #e8e8ea;
+}
+
+.panel .clearAll {
+  margin-left: auto;
+  padding: 5px 11px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  font-size: 10.5px;
+  color: #8a8a90;
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+}
+
+.panel .clearAll:hover {
+  color: #e8e8ea;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.26);
+}
+
+/* ── focus + motion ─────────────────────────────────────────────────── */
+
+.hint:focus-visible,
+.panel button:focus-visible {
+  outline: 2px solid #e0ea5e;
+  outline-offset: 2px;
+}
+
+/* No ring on the input itself: it always has focus while the panel is open,
+   so a ring would be permanent chrome (and chartreuse outside the stars and
+   selected pill). The caret marks it instead. */
+
+@media (prefers-reduced-motion: reduce) {
+  .hint,
+  .panel .pill,
+  .panel .clearAll {
+    transition: none;
+  }
+  .overlay {
+    animation: none;
+  }
+}

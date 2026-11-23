@@ -33,6 +33,10 @@ const MIN_LABEL_GAP_PX = 90;
 // first stretch of each ruler is left blank.
 const CORNER_CLEARANCE_PX = 28;
 
+// The bottom of the left ruler is left blank too: the search hint sits in
+// the bottom-left corner (32px up, ~22px tall), and labels there collide.
+const SEARCH_HINT_CLEARANCE_PX = 62;
+
 function stepFor(scale: number): number {
   return (
     STEPS.find((s) => s * scale >= MIN_LABEL_GAP_PX) ?? STEPS[STEPS.length - 1]
@@ -90,6 +94,7 @@ export default function Ruler({
       {yMarks.map((world) => {
         const screen = pan.y + world * scale;
         if (screen < CORNER_CLEARANCE_PX) return null;
+        if (screen > viewport.h - SEARCH_HINT_CLEARANCE_PX) return null;
         return (
           <span
             key={`y${world}`}
