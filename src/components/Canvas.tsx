@@ -72,8 +72,8 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
     [entries, filter, filterActive]
   );
   // Whether the search panel is open. It's only shown while the mat is idle
-  // (see the render). Opening a result closes it, so leaving that detail
-  // view lands back on the mat.
+  // (see the render). Opening a result leaves it set, so the panel hides
+  // during the detail view and returns when you leave it.
   const [searchOpen, setSearchOpen] = useState(false);
 
   const viewportRef = useRef<HTMLDivElement>(null);

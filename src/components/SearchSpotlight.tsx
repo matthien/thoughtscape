@@ -209,12 +209,14 @@ export default function SearchSpotlight({
     (document.activeElement as HTMLElement | null)?.blur();
   }
 
-  // Opening a result closes the panel, so leaving the detail view (button,
-  // Escape or browser back) lands on the mat, not back in search — Matt's
-  // call. The filter itself stays applied: the mat stays dimmed and the
-  // corner hint still shows it, one click or "/" away from the same search.
+  // Opening a result leaves the panel "open": the canvas only shows it while
+  // the mat is idle, so it hides during the detail view and comes back
+  // (refocused, query and highlight intact) when you leave it via the
+  // button, Escape or browser back. Matt's call, reversing an earlier
+  // version that dropped you on the bare mat instead.
   function openResult(r: SearchResult) {
-    close();
+    setHoverStar(null);
+    (document.activeElement as HTMLElement | null)?.blur();
     onOpenResult(r.index);
   }
 
