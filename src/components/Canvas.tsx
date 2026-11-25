@@ -40,7 +40,18 @@ function prefersReducedMotion(): boolean {
   );
 }
 
-export default function Canvas({ entries }: { entries: MediaEntry[] }) {
+export default function Canvas({
+  entries,
+  mini = false,
+}: {
+  entries: MediaEntry[];
+  /**
+   * The cut-down mat shown at /embed, framed on Matt's portfolio. Hides the
+   * ruler and search, and leaves the URL alone (see syncUrl). Off by default,
+   * so every other page renders exactly as before.
+   */
+  mini?: boolean;
+}) {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [dragging, setDragging] = useState(false);
@@ -198,12 +209,25 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
 
+  // Keeps the address bar in step with the detail view (/film/<slug>).
+  // Skipped in mini mode: inside an iframe, history entries land in the
+  // host page's tab, so the portfolio's Back button would step through cards
+  // instead of leaving the page, and closing a card would send the frame to
+  // "/" (the full site).
+  function syncUrl(mode: "push" | "replace", state: unknown, url: string) {
+    if (mini) return;
+    if (mode === "push") window.history.pushState(state, "", url);
+    else window.history.replaceState(state, "", url);
+  }
+
   // Deep-linking: /film/<slug> (movies) or /book/<slug> (books) opens
   // straight into the detail view (no camera to animate from on a fresh
   // load), and the browser's back/forward buttons are kept in sync via
   // popstate. The canvas itself is never unmounted for any of this -- it's
-  // all just state.
+  // all just state. Mini mode never touches the URL, so it has nothing to
+  // read back.
   useEffect(() => {
+    if (mini) return;
     function applyFromPath() {
       const match = window.location.pathname.match(/^\/(film|book)\/(.+)$/);
       const mediaType = match?.[1] === "book" ? "book" : "movie";
@@ -267,7 +291,7 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
     zoomTargetRef.current = null;
     fromCameraRef.current = { x: pan.x, y: pan.y, scale: zoom };
     setSelectedIndex(i);
-    window.history.pushState({ selectedIndex: i }, "", detailPath(entry));
+    syncUrl("push", { selectedIndex: i }, detailPath(entry));
 
     const from: Transform = { x: pan.x, y: pan.y, scale: zoom };
     const to = computeZoomTransform(entry.x, entry.y, vw, vh, posterHeightFor(entry, bookHeights[entry.id]));
@@ -286,7 +310,7 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const entry = entries[selectedIndex];
-    window.history.pushState(null, "", "/");
+    syncUrl("push", null, "/");
 
     const from = computeZoomTransform(entry.x, entry.y, vw, vh, posterHeightFor(entry, bookHeights[entry.id]));
     const to: Transform = { ...fromCameraRef.current };
@@ -313,7 +337,7 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
     const vh = window.innerHeight;
     const fromEntry = entries[selectedIndex];
     const toEntry = entries[newIndex];
-    window.history.replaceState({ selectedIndex: newIndex }, "", detailPath(toEntry));
+    syncUrl("replace", { selectedIndex: newIndex }, detailPath(toEntry));
 
     const from = computeZoomTransform(
       fromEntry.x,
@@ -490,13 +514,15 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
     >
       {/* Outside .world on purpose: the ruler is fixed to the viewport
           edges and reverses the camera to label world coordinates, rather
-          than riding along with the transform. */}
-      <Ruler
-        pan={{ x: camera.x, y: camera.y }}
-        scale={camera.scale}
-        viewport={{ w: vw, h: vh }}
-        dimmed={phase !== "idle"}
-      />
+          than riding along with the transform. Not shown in mini mode. */}
+      {!mini && (
+        <Ruler
+          pan={{ x: camera.x, y: camera.y }}
+          scale={camera.scale}
+          viewport={{ w: vw, h: vh }}
+          dimmed={phase !== "idle"}
+        />
+      )}
 
       <div
         className={styles.world}
@@ -563,31 +589,35 @@ export default function Canvas({ entries }: { entries: MediaEntry[] }) {
         })}
       </div>
 
-      <SearchSpotlight
-        filter={filter}
-        onChange={setFilter}
-        open={searchOpen && phase === "idle"}
-        onOpenChange={setSearchOpen}
-        // Matching entries in mat order (entries arrive logged_at desc).
-        // Not re-sorted by relevance.
-        results={entries.flatMap((entry, index) =>
-          matches[index]
-            ? [
-                {
-                  entry,
-                  index,
-                  coverRatio:
-                    entry.media_type === "book"
-                      ? (bookHeights[entry.id] ?? BOOK_FALLBACK_HEIGHT) / CARD_W
-                      : CARD_H / CARD_W,
-                },
-              ]
-            : []
-        )}
-        onOpenResult={openDetails}
-        total={entries.length}
-        visible={phase === "idle"}
-      />
+      {/* Not shown in mini mode, which also drops its "/" shortcut (the
+          listener lives inside SearchSpotlight). */}
+      {!mini && (
+        <SearchSpotlight
+          filter={filter}
+          onChange={setFilter}
+          open={searchOpen && phase === "idle"}
+          onOpenChange={setSearchOpen}
+          // Matching entries in mat order (entries arrive logged_at desc).
+          // Not re-sorted by relevance.
+          results={entries.flatMap((entry, index) =>
+            matches[index]
+              ? [
+                  {
+                    entry,
+                    index,
+                    coverRatio:
+                      entry.media_type === "book"
+                        ? (bookHeights[entry.id] ?? BOOK_FALLBACK_HEIGHT) / CARD_W
+                        : CARD_H / CARD_W,
+                  },
+                ]
+              : []
+          )}
+          onOpenResult={openDetails}
+          total={entries.length}
+          visible={phase === "idle"}
+        />
+      )}
 
       {phase === "idle" && (
         <button
